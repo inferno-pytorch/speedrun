@@ -1,1 +1,2 @@
-from .core import BaseExperiment, TensorboardMixin
+from .core import BaseExperiment
+from .tensorboard import TensorboardMixin

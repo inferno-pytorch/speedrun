@@ -1,8 +1,9 @@
 import os
 import yaml
-import tensorboardX as tx
 import argparse
-from contextlib import contextmanager
+import shutil
+import sys
+import ast
 
 try:
     from torch import save
@@ -41,6 +42,7 @@ class BaseExperiment(object):
         self._config = {}
         self._meta_config = {'exclude_attrs_from_save': []}
         self._cache = {}
+        self._argv = None
         # Publics
         self.experiment_directory = experiment_directory
         # Initialize mixin classes
@@ -99,6 +101,44 @@ class BaseExperiment(object):
         else:
             return None
 
+    def inherit_configuration(self, from_experiment_directory, file_name='train_config.yml'):
+        source_path = os.path.join(from_experiment_directory, 'Configurations', file_name)
+        target_path = os.path.join(self.configuration_directory, file_name)
+        shutil.copy(source_path, target_path)
+        return self
+
+    def dump_configuration(self, file_name='train_config.yml'):
+        dump_path = os.path.join(self.configuration_directory, file_name)
+        with open(dump_path, 'w') as f:
+            yaml.dump(self._config, f)
+        return self
+
+    def record_args(self):
+        self._argv = sys.argv
+        return self
+
+    def get_arg(self, tag, default=None, ensure_exists=False):
+        if f'--{tag}' in self._argv:
+            value = self._argv[self._argv.index(f'--{tag}') + 1]
+            # try to convert value to an int or a float or something
+            try:
+                value = ast.literal_eval(value)
+            except ValueError:
+                # nope, we'll have to live with a string
+                pass
+            return value
+        else:
+            if ensure_exists:
+                raise KeyError
+            return default
+
+    def update_configuration_from_args(self):
+        for arg in self._argv:
+            if arg.startswith('--config.'):
+                tag = arg.lstrip('--config.').replace('/')
+                value = self.get_arg(arg.lstrip('--'), ensure_exists=True)
+                self.set(tag, value)
+
     def checkpoint(self, force=True):
         if force:
             do_checkpoint = True
@@ -120,6 +160,18 @@ class BaseExperiment(object):
                 assert path in data
             data = data.get(path, default if path == paths[-1] else {})
         return data
+
+    def set(self, tag, value):
+        paths = tag.split('/')
+        data = self._config
+        for path in paths[:-1]:
+            if path in data:
+                data = data[path]
+            else:
+                data.update({path: {}})
+                data = data[path]
+        data[paths[-1]] = value
+        return self
 
     def read(self, tag, default=None, ensure_exists=False):
         if ensure_exists:
@@ -171,74 +223,3 @@ class BaseExperiment(object):
         raise NotImplementedError
 
 
-class TensorboardMixin(object):
-    @property
-    def logger(self):
-        # Build logger if it doesn't exist
-        if not hasattr(self, '_logger'):
-            # noinspection PyUnresolvedReferences,PyAttributeOutsideInit
-            self._logger = tx.SummaryWriter(log_dir=self.log_directory)
-            # noinspection PyUnresolvedReferences
-            self._meta_config['exclude_attrs_from_save'].append('_logger')
-        return self._logger
-
-    @property
-    def tagscope(self):
-        if not hasattr(self, '_tagscope'):
-            # noinspection PyAttributeOutsideInit
-            self._tagscope = ''
-        return self._tagscope
-
-    @contextmanager
-    def set_tagscope(self, name):
-        try:
-            self._tagscope = name
-            yield
-        finally:
-            # noinspection PyAttributeOutsideInit
-            self._tagscope = ''
-
-    def get_full_tag(self, tag):
-        return "{}/{}".format(self.tagscope, tag)
-
-    def log_scalar(self, tag, value, step=None):
-        # noinspection PyUnresolvedReferences
-        step = self.step if step is None else step
-        self.logger.add_scalar(tag=self.get_full_tag(tag), scalar_value=value,
-                               global_step=step)
-        return self
-
-    def log_image(self, tag, value, step=None):
-        # noinspection PyUnresolvedReferences
-        step = self.step if step is None else step
-        self.logger.add_image(tag=self.get_full_tag(tag), img_tensor=value,
-                              global_step=step)
-        return self
-
-    def log_embedding(self, tag, tensor, images=None, step=None):
-        # noinspection PyUnresolvedReferences
-        step = self.step if step is None else step
-        self.logger.add_embedding(tag=self.get_full_tag(tag), mat=tensor,
-                                  label_img=images, global_step=step)
-        return self
-
-    def _log_x_now(self, x):
-        # noinspection PyUnresolvedReferences
-        frequency = self.get(f'tensorboard/log_{x}_every', None)
-        if frequency is not None:
-            # noinspection PyUnresolvedReferences
-            return (self.step % frequency) == 0
-        else:
-            return False
-
-    @property
-    def log_scalars_now(self):
-        return self._log_x_now('scalars')
-
-    @property
-    def log_images_now(self):
-        return self._log_x_now('images')
-
-    @property
-    def log_embeddings_now(self):
-        return self._log_x_now('embeddings')
