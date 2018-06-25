@@ -3,7 +3,15 @@ import yaml
 import tensorboardX as tx
 import argparse
 from contextlib import contextmanager
-from torch import save
+
+try:
+    from torch import save
+except ImportError:
+    import dill
+
+    def save(obj, file_path):
+        with open(file_path) as f:
+            dill.dump(obj, f, protocol=dill.HIGHEST_PROTOCOL)
 
 
 class Add(object):
@@ -32,6 +40,7 @@ class BaseExperiment(object):
         self._step = None
         self._config = {}
         self._meta_config = {'exclude_attrs_from_save': []}
+        self._cache = {}
         # Publics
         self.experiment_directory = experiment_directory
         # Initialize mixin classes
@@ -111,6 +120,37 @@ class BaseExperiment(object):
                 assert path in data
             data = data.get(path, default if path == paths[-1] else {})
         return data
+
+    def read(self, tag, default=None, ensure_exists=False):
+        if ensure_exists:
+            assert tag in self._cache
+        return self._cache.get(tag, default)
+
+    def write(self, tag, value):
+        self._cache.update({tag: value})
+        return self
+
+    def accumulate(self, tag, value, accumulate_fn=None):
+        if tag not in self._cache:
+            self.write(tag, value)
+        else:
+            if accumulate_fn is None:
+                self._cache[tag] += value
+            else:
+                assert callable(accumulate_fn)
+                self._cache[tag] = accumulate_fn(self._cache[tag], value)
+        return self
+
+    def clear(self, tag):
+        if tag not in self._cache:
+            pass
+        else:
+            del self._cache[tag]
+        return self
+
+    def clear_all(self):
+        self._cache.clear()
+        return self
 
     def read_config_file(self, file_name='train_config.yml', path=None):
         path = os.path.join(self.configuration_directory, file_name) if path is None else path
