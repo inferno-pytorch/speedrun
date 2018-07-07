@@ -236,7 +236,7 @@ class BaseExperiment(object):
         """
         for arg in self._argv:
             if arg.startswith('--config.'):
-                tag = arg.lstrip('--config.').replace('.', '/')
+                tag = arg.replace('--config.', '').replace('.', '/')
                 value = self.get_arg(arg.lstrip('--'), ensure_exists=True)
                 self.set(tag, value)
         return self
