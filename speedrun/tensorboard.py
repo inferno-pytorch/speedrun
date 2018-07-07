@@ -30,7 +30,10 @@ class TensorboardMixin(object):
             self._tagscope = ''
 
     def get_full_tag(self, tag):
-        return "{}/{}".format(self.tagscope, tag)
+        if self.tagscope:
+            return "{}/{}".format(self.tagscope, tag)
+        else:
+            return tag
 
     def log_scalar(self, tag, value, step=None):
         # noinspection PyUnresolvedReferences
