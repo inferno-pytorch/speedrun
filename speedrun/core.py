@@ -7,12 +7,18 @@ import ast
 
 try:
     from torch import save
+    from torch import load
 except ImportError:
     import dill
 
     def save(obj, file_path):
         with open(file_path) as f:
             dill.dump(obj, f, protocol=dill.HIGHEST_PROTOCOL)
+
+    def load(file_path):
+        with open(file_path) as f:
+            out = dill.load(f)
+        return out
 
 
 class Add(object):
@@ -49,7 +55,9 @@ class BaseExperiment(object):
         self._experiment_directory = None
         self._step = None
         self._config = {}
-        self._meta_config = {'exclude_attrs_from_save': []}
+        self._meta_config = {'exclude_attrs_from_save': [],
+                             'stateless_attributes': [],
+                             'stateful_attributes': []}
         self._cache = {}
         self._argv = None
         # Publics
@@ -236,9 +244,18 @@ class BaseExperiment(object):
         """
         for arg in self._argv:
             if arg.startswith('--config.'):
-                tag = arg.lstrip('--config.').replace('.', '/')
+                tag = arg.replace('--config.', '').replace('.', '/')
                 value = self.get_arg(arg.lstrip('--'), ensure_exists=True)
                 self.set(tag, value)
+        return self
+
+    def register_unpickleable(self, *attributes):
+        """
+        Specify the attributes that are not pickleable. If the experiment contains
+        unregistered unpickleable attributes, `BaseExperiment.checkpoint` might throw an error
+        if not overloaded.
+        """
+        self._meta_config['exclude_attrs_from_save'].extend(list(attributes))
         return self
 
     def checkpoint(self, force=True):
@@ -250,8 +267,8 @@ class BaseExperiment(object):
         Warnings
         --------
 
-        If your experiment has unpickleable objects, make sure to set
-        `self._meta_config['exclude_attrs_from_save']` to not have them pickled.
+        If your experiment has unpickleable objects, make sure to register them with
+        `self.register_unpickleable` to not have them pickled.
 
         Parameters
         ----------
@@ -272,6 +289,36 @@ class BaseExperiment(object):
                          if key not in self._meta_config['exclude_attrs_from_save']}
             save(self_dict, os.path.join(self.checkpoint_directory,
                                          f'checkpoint_iter_{self.step}.pt'))
+        return self
+
+    def load_from_checkpoint(self, step=None):
+        """
+        Load checkpoint from file. Note that attributes registered as unpickleable are not
+        pickled, and will not be loaded.
+
+        Parameters
+        ----------
+        step : int
+            Load checkpoint made at step.
+
+        Returns
+        -------
+            BaseExperiment
+        """
+        for filename in os.listdir(self.checkpoint_directory):
+            if filename.startswith('checkpoint_iter_') and filename.endswith('.pt'):
+                try:
+                    ckpt_step = int(filename.strip('checkpoint_iter_.pt'))
+                except ValueError:
+                    continue
+                if ckpt_step == step:
+                    # load
+                    self_dict = load(filename)
+                    self.__dict__.update(self_dict)
+                    break
+        else:
+            raise FileNotFoundError(f"No checkpoint for step {step} found in "
+                                    f"{self.checkpoint_directory}.")
         return self
 
     def get(self, tag, default=None, ensure_exists=False):
