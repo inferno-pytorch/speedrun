@@ -8,7 +8,7 @@ A no-strings-attached toolkit to help you deploy and manage your machine learnin
 
 speedrun provides the base-class `BaseExperiment` for your experiments, in addition to a Tensorboard plug-in: `TensorboardMixin`. `BaseExperiment` contains handy tools for commandline argument & yaml configuration parsing and basic checkpointing, all of which you're free and welcome to override and adapt to your requirements. `TensorboardMixin` thinly wraps tensorboardX to get you god-tier logging right out of the box (but is fully optional, in-case you like your logging your way). 
 
-Here's an example. 
+Here's how it's meant to work. 
 
 ```python
 from speedrun import BaseExperiment, TensorboardMixin
@@ -71,12 +71,12 @@ Now, run the file:
 ```bash
 mkdir experiments
 python my_experiment.py experiments/BASIC-0 
-  --config.my_cool_module.kwargs "{'a': 1, 'b': 2}" \
-  --config.another_module.kwargs "{'c': 3, 'd': 4}" \
-  --config.training.num_iterations 100000 \
-  --config.training.checkpoint_every 10000 \
-  --config.tensorboard.log_images_every 100 \
-  --config.tensorboard.log_scalars_every 10 \
+> --config.my_cool_module.kwargs "{'a': 1, 'b': 2}" \
+> --config.another_module.kwargs "{'c': 3, 'd': 4}" \
+> --config.training.num_iterations 100000 \
+> --config.training.checkpoint_every 10000 \
+> --config.tensorboard.log_images_every 100 \
+> --config.tensorboard.log_scalars_every 10
 ```
 
 This will create a directory `experiments/BASIC-0` with multiple subdirectories. The configuration will be dumped in `experiments/BASIC-0/Configurations`, the tensorboard logs in `experiments/BASIC-0/Logs` and the checkpoints in `experiments/BASIC-0/Weights`. Of course, a fully valid option would be to create `BASIC-0/Configurations/train_config.yml` manually (you'll usually only need to do this once!) and populate it with an editor. 
