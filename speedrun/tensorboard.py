@@ -56,6 +56,13 @@ class TensorboardMixin(object):
                                   label_img=images, global_step=step)
         return self
 
+    def log_histogram(self, tag, value, bins='tensorflow', step=None):
+        # noinspection PyUnresolvedReferences
+        step = self.step if step is None else step
+        self.logger.add_histogram(tag=self.get_full_tag(tag), values=value, bins=bins,
+                                  global_step=step)
+        return self
+
     def _log_x_now(self, x):
         # noinspection PyUnresolvedReferences
         frequency = self.get(f'tensorboard/log_{x}_every', None)
@@ -76,3 +83,8 @@ class TensorboardMixin(object):
     @property
     def log_embeddings_now(self):
         return self._log_x_now('embeddings')
+
+    @property
+    def log_histograms_now(self):
+        return self._log_x_now('histograms')
+
