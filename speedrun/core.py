@@ -534,6 +534,14 @@ class BaseExperiment(object):
         self.experiment_directory = experiment_directory
         return self
 
+    def purge_exisiting_experiment_directory(self, experiment_directory=None):
+        experiment_directory = self.get_arg(1) \
+            if experiment_directory is None else experiment_directory
+        if experiment_directory is None:
+            raise RuntimeError("No experiment directory found to be purged.")
+        shutil.rmtree(experiment_directory)
+        return self
+
     def run(self):
         """Run the experiment."""
         raise NotImplementedError
@@ -566,6 +574,8 @@ class BaseExperiment(object):
             BaseExperiment
         """
         self.record_args()
+        if self.get_arg('purge', False):
+            self.purge_exisiting_experiment_directory()
         self.parse_experiment_directory()
         inherit_from = self.get_arg('inherit')
         if inherit_from is not None:
