@@ -539,7 +539,8 @@ class BaseExperiment(object):
             if experiment_directory is None else experiment_directory
         if experiment_directory is None:
             raise RuntimeError("No experiment directory found to be purged.")
-        shutil.rmtree(experiment_directory)
+        if os.path.exists(experiment_directory):
+            shutil.rmtree(experiment_directory)
         return self
 
     def run(self):
