@@ -70,7 +70,7 @@ Now, run the file:
 
 ```bash
 mkdir experiments
-python my_experiment.py experiments/BASIC-0 
+python my_experiment.py experiments/BASIC-0 \
 > --config.my_cool_module.kwargs "{'a': 1, 'b': 2}" \
 > --config.another_module.kwargs "{'c': 3, 'd': 4}" \
 > --config.training.num_iterations 100000 \
@@ -94,7 +94,7 @@ To know the exact difference between the two experiments, you can always:
 diff experiments/BASIC-0/Configurations/train_config.yml experiments/BASIC-1/Configurations/train_config.yml
 ```
 
-When you're done with the first round of experiments, it's super easy to iterate on your ideas simply by inheriting from your `MyFirstExperiment`, perhaps in a different file: 
+The tools might be nice, but it's not just just about that - organizing experiments in classes is a great way of reusing code, which in turn helps keep your experiments reproducible. Say when you're done with the first round of experiments, it's super easy to iterate on your ideas simply by inheriting from your `MyFirstExperiment`, perhaps in a different file: 
 
 ```python
 from main import MyFirstExperiment
@@ -109,7 +109,7 @@ if __name__=='__main__':
     MySecondExperiment().run()
 ```
 
-Of course, it's hard to know in advance what parts of the experiment would eventually need to be replaced - so you might need to refactor `MyFirstExperiment` and move bits of logic to their own methods, which you can then overload in `MySecondExperiment`.
+This way, when you fix a bug in `MyFirstExperiment.some_basic_logic`, it's automatically fixed in `MySecondExperiment` as well. Fine print: it's hard to know in advance what parts of the experiment would eventually need to be replaced - so you might need to refactor `MyFirstExperiment` and move bits of logic to their own methods, which you can then overload in `MySecondExperiment`. But more often than not, it's totally worth the effort. 
 
 ## Why?
 ![shitcode](https://i.imgur.com/qG08mar.jpg)
