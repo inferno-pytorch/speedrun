@@ -1,43 +1,33 @@
 import os
-import yaml
 from argparse import Namespace
 import shutil
 import sys
 import ast
 
+import yaml
+# This registers the constructors
+from . import yaml_utils
+
 try:
     from torch import save
     from torch import load
 except ImportError:
-    import dill
+    try:
+        import dill
+        serializer = dill
+    except ImportError:
+        dill = None
+        import pickle
+        serializer = pickle
 
     def save(obj, file_path):
         with open(file_path) as f:
-            dill.dump(obj, f, protocol=dill.HIGHEST_PROTOCOL)
+            serializer.dump(obj, f, protocol=serializer.HIGHEST_PROTOCOL)
 
     def load(file_path):
         with open(file_path) as f:
-            out = dill.load(f)
+            out = serializer.load(f)
         return out
-
-
-class Add(object):
-    def __init__(self, *values):
-        self.values = tuple(values)
-
-    def __int__(self):
-        return int(sum(self.values))
-
-    def __float__(self):
-        return float(sum(self.values))
-
-    @classmethod
-    def from_yaml(cls, loader, node):
-        values = loader.construct_sequence(node)
-        return cls(*values)
-
-
-yaml.add_constructor('!Add', Add.from_yaml)
 
 
 class BaseExperiment(object):
