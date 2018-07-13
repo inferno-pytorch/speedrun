@@ -1,10 +1,16 @@
 from contextlib import contextmanager
-import tensorboardX as tx
+try:
+    import tensorboardX as tx
+except ImportError:
+    tx = None
 
 
 class TensorboardMixin(object):
     @property
     def logger(self):
+        if tx is None:
+            raise ModuleNotFoundError("TensorboardMixin requires tensorboardX. You can "
+                                      "install it with `pip install tensorboardX`")
         # Build logger if it doesn't exist
         if not hasattr(self, '_logger'):
             # noinspection PyUnresolvedReferences,PyAttributeOutsideInit

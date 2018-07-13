@@ -12,5 +12,6 @@ setuptools.setup(
     license='GPL-v3',
     description="Toolkit for machine learning experiment management.",
     version="0.1",
+    install_requires=['pyyaml>=3.12'],
     packages=setuptools.find_packages(),
 )

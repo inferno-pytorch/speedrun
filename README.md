@@ -4,9 +4,29 @@
 
 A no-strings-attached toolkit to help you deploy and manage your machine learning experiments. The idea is to equip you with the tools you need to have well-documented and reproducible experiments going, but without _getting in your way_.  
 
+### Installation
+On python 3.6+:
+
+```bash
+# Clone the repository
+git clone https://github.com/nasimrahaman/speedrun.git
+cd speedrun/
+# Install
+python setup.py install
+```
+
+Optionally, 
+
+```bash
+# Install tensorboardX
+pip install tensorboardX
+# Install dill
+pip install dill
+```
+
 ## How? 
 
-speedrun provides the base-class `BaseExperiment` for your experiments, in addition to a Tensorboard plug-in: `TensorboardMixin`. `BaseExperiment` contains handy tools for commandline argument & yaml configuration parsing and basic checkpointing, all of which you're free and welcome to override and adapt to your requirements. `TensorboardMixin` thinly wraps tensorboardX to get you god-tier logging right out of the box (but is fully optional, in-case you like your logging your way). 
+speedrun provides the base-class `BaseExperiment` for your experiments, in addition to a Tensorboard plug-in: `TensorboardMixin`. `BaseExperiment` contains handy tools for commandline argument & yaml configuration parsing and basic checkpointing, all of which you're free and welcome to override and adapt to your requirements. `TensorboardMixin` thinly wraps [tensorboardX](https://github.com/lanpa/tensorboard-pytorch) to get you god-tier logging right out of the box (but it's fully optional if you like your logging your way). 
 
 Here's how it's meant to work. 
 
