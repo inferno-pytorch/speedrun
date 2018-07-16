@@ -1,21 +1,49 @@
 from .core import BaseExperiment
 import os.path as path
-import torch
-import numpy as np
-import imageio
+
+try:
+    import torch
+except ImportError:
+    torch = None
+
+try:
+    import numpy as np
+except ImportError:
+    np = None
+
+try:
+    import imageio
+except ImportError:
+    imageio = None
+
+try:
+    import tqdm
+except ImportError:
+    tqdm = None
 
 
-class IOMixin(BaseExperiment):
+class IOMixin(object):
+    @property
+    def is_printing_to_file(self):
+        return getattr(self, '_print_to_file', False)
+
+    def print_to_file(self, yes=True):
+        setattr(self, '_print_to_file', yes)
+        return self
+
     @staticmethod
     def to_array(value):
-        if torch.is_tensor(value):
+        assert np is not None, "numpy is required for checking if value is numpy array (surprise!)."
+        if torch is not None and torch.is_tensor(value):
             return value.detach().cpu().numpy()
-        elif isinstance(np.ndarray):
+        elif isinstance(value, np.ndarray):
             return value
         else:
             raise ValueError(f"Can't convert {value.__class__.__name__} to np.array.")
 
+    # noinspection PyUnresolvedReferences
     def print_image(self, tag, value):
+        assert imageio is not None, "imageio is required to print images."
         # Convert to a numpy array
         value = self.to_array(value)
         # Make sure the image axis is right
@@ -27,7 +55,7 @@ class IOMixin(BaseExperiment):
             is_correct_shape = value.shape[-1] in [3, 4]
             if not is_correct_shape:
                 assert value.shape[0] in [3, 4], "Only RGB and RGBA images are supported."
-                image = value.transpose(1, 2, 0)
+                image = value.transpose((1, 2, 0))
             else:
                 image = value
         else:
@@ -46,10 +74,20 @@ class IOMixin(BaseExperiment):
         # Done
         return self
 
-    def progress(self, iterator, **tqdm_kwargs):
-        # TODO
-        pass
+    @staticmethod
+    def progress(iterator, **tqdm_kwargs):
+        assert tqdm is not None, "tqdm is required for progress bars. Please `pip install tqdm`."
+        return tqdm.tqdm(iterator, **tqdm_kwargs)
 
-    def print(self):
-        # TODO
-        pass
+    # noinspection PyUnresolvedReferences
+    def print(self, message, printer=print):
+        if printer == 'tqdm':
+            printer = tqdm.tqdm.write
+        # Print to std-out with printer
+        printer(message)
+        if self.is_printing_to_file:
+            # Write message out to file
+            stdout_filename = path.join(self.log_directory, 'stdout.txt')
+            with open(stdout_filename, 'a') as stdout_file:
+                print(message, end='\n', file=stdout_file)
+        return self
