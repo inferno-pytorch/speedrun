@@ -32,6 +32,9 @@ except ImportError:
 
 
 class BaseExperiment(object):
+    """This could be the name of the method BaseExperiment.run() should call by default."""
+    DEFAULT_DISPATCH = None
+
     def __init__(self, experiment_directory=None):
         """
         Base class for all experiments to derive from.
@@ -544,11 +547,12 @@ class BaseExperiment(object):
         Calling `python experiment.py --dispatch train` from the command line
         will cause this method to call `my_experiment.train()`.
         """
-        if self.get_arg('dispatch', None) is None:
+        if self.get_arg('dispatch', None) is None or self.DEFAULT_DISPATCH is None:
             raise NotImplementedError
         else:
             # Get the method to be dispatched and call
-            return self.dispatch(self.get_arg('dispatch'), *args, **kwargs)
+            return self.dispatch(self.get_arg('dispatch') or self.DEFAULT_DISPATCH,
+                                 *args, **kwargs)
 
     def dispatch(self, key, *args, **kwargs):
         """Dispatches a method given its name as `key`."""
