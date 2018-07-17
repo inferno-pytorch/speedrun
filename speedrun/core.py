@@ -3,6 +3,7 @@ from argparse import Namespace
 import shutil
 import sys
 import ast
+import subprocess
 
 import yaml
 # This registers the constructors
@@ -537,6 +538,15 @@ class BaseExperiment(object):
         """Run the experiment."""
         raise NotImplementedError
 
+    def update_git_revision(self):
+        try:
+            gitcmd = ["git", "rev-parse", "--verify", "HEAD"]
+            gitrev = subprocess.check_output(gitcmd).decode('latin1').strip()
+        except subprocess.CalledProcessError:
+            gitrev = "none"
+
+        self.set("git-rev", gitrev)
+
     def auto_setup(self):
         """
         Examples
@@ -579,6 +589,8 @@ class BaseExperiment(object):
             pass
         # Update config from commandline args
         self.update_configuration_from_args()
+        # Include git revision in config file
+        self.update_git_revision()
         # Dump final config file
         self.dump_configuration()
         # Done
