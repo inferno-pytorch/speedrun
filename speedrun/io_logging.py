@@ -1,5 +1,5 @@
-from .core import BaseExperiment
 import os.path as path
+import os
 
 try:
     import torch
@@ -67,6 +67,8 @@ class IOMixin(object):
             path_after_plot_dir = path.sep.join(fields[:-1])
         else:
             path_after_plot_dir = ''
+        # Make directory if it doesn't exist
+        os.makedirs(path.join(self.plot_directory, path_after_plot_dir), exist_ok=True)
         # Make file path
         file_path = path.join(self.plot_directory, path_after_plot_dir, file_name)
         # Write image
