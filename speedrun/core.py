@@ -534,21 +534,63 @@ class BaseExperiment(object):
             shutil.rmtree(experiment_directory)
         return self
 
-    def run(self):
-        """Run the experiment."""
-        raise NotImplementedError
+    def run(self, *args, **kwargs):
+        """
+        Run the experiment. If '--dispatch method' is given as a command line argument, it's
+        called with the `args` and `kwargs` provided, as in `self.method(*args, **kwargs)`.
 
-    def update_git_revision(self):
+        Say the BaseExperiment instance `my_experiment` a method called `train`,
+        and it's defined in some `experiment.py` where `my_experiment.run()` is called.
+        Calling `python experiment.py --dispatch train` from the command line
+        will cause this method to call `my_experiment.train()`.
+        """
+        if self.get_arg('dispatch', None) is None:
+            raise NotImplementedError
+        else:
+            # Get the method to be dispatched and call
+            return self.dispatch(self.get_arg('dispatch'), *args, **kwargs)
+
+    def dispatch(self, key, *args, **kwargs):
+        """Dispatches a method given its name as `key`."""
+        assert hasattr(self, key), f"Trying to dispatch method {key}, but it doesn't exist."
+        return getattr(self, key)(*args, **kwargs)
+
+    def update_git_revision(self, overwrite=False):
+        """
+        Updates the configuration with a 'git_rev' field with the current HEAD revision.
+
+        Parameters
+        ----------
+        overwrite : bool
+            If a 'git_rev' field already exists, Whether to overwrite it.
+
+        Returns
+        -------
+            BaseExperiment
+        """
         try:
             gitcmd = ["git", "rev-parse", "--verify", "HEAD"]
             gitrev = subprocess.check_output(gitcmd).decode('latin1').strip()
         except subprocess.CalledProcessError:
             gitrev = "none"
+        if not overwrite and self.get('git_rev', None) is not None:
+            # Git rev already in config and we're not overwriting, so...
+            pass
+        else:
+            self.set("git_rev", gitrev)
+        return self
 
-        self.set("git-rev", gitrev)
-
-    def auto_setup(self):
+    def auto_setup(self, update_git_revision=True, dump_configuration=True):
         """
+        Set things up automagically.
+
+        Parameters
+        ----------
+        update_git_revision : bool
+            Whether to update current configuration with the git revision hash.
+        dump_configuration : bool
+            Whether to update the configuration in file.
+
         Examples
         --------
         In python file experiment.py:
@@ -589,10 +631,12 @@ class BaseExperiment(object):
             pass
         # Update config from commandline args
         self.update_configuration_from_args()
-        # Include git revision in config file
-        self.update_git_revision()
-        # Dump final config file
-        self.dump_configuration()
+        if update_git_revision:
+            # Include git revision in config file
+            self.update_git_revision()
+        if dump_configuration:
+            # Dump final config file
+            self.dump_configuration()
         # Done
         return self
 
