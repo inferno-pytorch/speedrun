@@ -11,6 +11,8 @@ On python 3.6+:
 # Clone the repository
 git clone https://github.com/nasimrahaman/speedrun.git
 cd speedrun/
+# To embark on an adventure, uncomment the following line:
+# git checkout dev
 # Install
 python setup.py install
 ```
