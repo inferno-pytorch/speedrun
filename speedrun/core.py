@@ -547,7 +547,7 @@ class BaseExperiment(object):
         Calling `python experiment.py --dispatch train` from the command line
         will cause this method to call `my_experiment.train()`.
         """
-        if self.get_arg('dispatch', None) is None or self.DEFAULT_DISPATCH is None:
+        if self.get_arg('dispatch', None) is None and self.DEFAULT_DISPATCH is None:
             raise NotImplementedError
         else:
             # Get the method to be dispatched and call
