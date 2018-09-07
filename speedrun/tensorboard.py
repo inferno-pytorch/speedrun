@@ -55,11 +55,11 @@ class TensorboardMixin(object):
                               global_step=step)
         return self
 
-    def log_embedding(self, tag, tensor, images=None, step=None):
+    def log_embedding(self, tag, tensor, images=None, metadata=None, step=None):
         # noinspection PyUnresolvedReferences
         step = self.step if step is None else step
         self.logger.add_embedding(tag=self.get_full_tag(tag), mat=tensor,
-                                  label_img=images, global_step=step)
+                                  metadata=metadata, label_img=images, global_step=step)
         return self
 
     def log_histogram(self, tag, value, bins='tensorflow', step=None):
