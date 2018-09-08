@@ -1,5 +1,4 @@
 import os
-from argparse import Namespace
 import shutil
 import sys
 import ast
@@ -8,6 +7,7 @@ import subprocess
 import yaml
 # This registers the constructors
 from . import yaml_utils
+from .py_utils import Namespace
 
 try:
     from torch import save
