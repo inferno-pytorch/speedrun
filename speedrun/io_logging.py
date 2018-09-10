@@ -27,9 +27,31 @@ class IOMixin(object):
     def is_printing_to_file(self):
         return getattr(self, '_print_to_file', False)
 
-    def print_to_file(self, yes=True):
+    @property
+    def printing_to_file_name(self):
+        return getattr(self, '_print_filename', 'stdout')
+
+
+    def print_to_file(self, yes=True, fname='stdout'):
         setattr(self, '_print_to_file', yes)
+        setattr(self, '_print_filename', fname)
         return self
+
+    @property
+    def printer(self):
+        return getattr(self, '_printer', print)
+
+    def set_printer(self, printer):
+        if printer == 'stdout':
+            setattr(self, '_printer', print)
+        elif printer == 'tqdm':
+            setattr(self, '_printer', tqdm.tqdm.write)
+        else:
+            setattr(self, '_printer', printer)
+
+    def print_to_tqdm(self):
+        assert tqdm is not None, "tqdm is required to print_to_tqdm. Please `pip install tqdm`."
+        self.set_printer('tqdm')
 
     @staticmethod
     def to_array(value):
@@ -82,14 +104,16 @@ class IOMixin(object):
         return tqdm.tqdm(iterator, **tqdm_kwargs)
 
     # noinspection PyUnresolvedReferences
-    def print(self, message, printer=print):
+    def print(self, message, printer=None):
+        if not printer:
+            printer = self.printer
         if printer == 'tqdm':
             printer = tqdm.tqdm.write
         # Print to std-out with printer
         printer(message)
         if self.is_printing_to_file:
             # Write message out to file
-            stdout_filename = path.join(self.log_directory, 'stdout.txt')
+            stdout_filename = path.join(self.log_directory, self.printing_to_file_name)
             with open(stdout_filename, 'a') as stdout_file:
                 print(message, end='\n', file=stdout_file)
         return self
