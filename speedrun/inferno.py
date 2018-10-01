@@ -89,7 +89,6 @@ class InfernoMixin(object):
         self._trainer.build_optimizer(self.get('trainer/optimizer'))
 
     def inferno_build_intervals(self):
-        print(self.get('trainer/intervals'))
         if self.get('trainer/intervals/validate_every') is not None:
             self._trainer.validate_every(self.get('trainer/intervals/validate_every'))
 
