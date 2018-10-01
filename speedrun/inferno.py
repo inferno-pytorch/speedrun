@@ -90,7 +90,7 @@ class InfernoMixin(object):
 
     def inferno_build_intervals(self):
         if self.get('trainer/intervals/validate_every') is not None:
-            self._trainer.validate_every(self.get('trainer/intervals/validate_every'))
+            self._trainer.validate_every(**self.get('trainer/intervals/validate_every'))
 
         if self.get('trainer/intervals/save_every') is not None:
             self._trainer.save_every(self.get('trainer/intervals/save_every'))
@@ -101,15 +101,32 @@ class InfernoMixin(object):
                 print("warning can not use TensorboardLogger")
                 return
 
-            tb_logger = TensorboardLogger(**self.get(f'trainer/tensorboard/'))
-            # register tensorboard logger
+            tb_args = self.get('trainer/tensorboard')
+            tb_args['log_directory'] = f"{self.experiment_directory}/Logs"
+            print("logging to ", tb_args['log_directory'])
+            tb_logger = TensorboardLogger(**tb_args)
+
+            # register Tensorboard logger
             self._trainer.build_logger(tb_logger)
-            # and set _logger to so it can be used by the tensorboard mixin
+            # and set _logger to so it can be used by the Tensorboardmixin
             self._logger = tb_logger
 
     def inferno_build_max_epochs(self):
-        if 'max_epochs' in self.get(f'trainer'):
-            self._trainer.set_max_num_epochs(self.get(f'trainer/max_epochs'))
+        self._trainer.set_max_num_epochs(self.get(f'trainer/max_epochs'))
+
+    def inferno_build_callbacks(self):
+        # build all callbacks from nested conf file
+        if self.get('trainer/callbacks') is not None:
+            for cb_class in self.get('trainer/callbacks'):
+                cb_class_module = getattr(inferno.trainers.callbacks, cb_class)
+                for cb in self.get(f'trainer/callbacks/{cb_class}'):
+                    print(f'creating trainer/callbacks/{cb_class}/{cb}')
+                    args = self.get(f'trainer/callbacks/{cb_class}/{cb}')
+                    if "noargs" in args:
+                        callback = getattr(cb_class_module, cb)()
+                    else:
+                        callback = getattr(cb_class_module, cb)(**args)
+                    self._trainer.register_callback(callback)
 
     # overwrite this properties to define train loader
     def build_train_loader(self):
