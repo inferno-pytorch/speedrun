@@ -7,7 +7,7 @@ import subprocess
 import yaml
 # This registers the constructors
 from . import yaml_utils
-from .py_utils import Namespace
+from .py_utils import Namespace, update_nested_dict
 
 try:
     from torch import save
@@ -520,6 +520,34 @@ class BaseExperiment(object):
             self._config = yaml.load(f)
         return self
 
+    def read_macro(self, path=None):
+        """
+        If multiple experiments share the same set of command line args, it can be annoying
+        to key them in manually every time. Macros is a secondary config file that can be shared
+        between experiments. The main config is updated with the contents of the secondary config,
+        which we call a _macro_.
+
+        Parameters
+        ----------
+        path : str
+            Path to the macro file. If None, it's read from the command line arg '--macro'.
+            If that doesn't work, this function does nothing.
+
+        Returns
+        -------
+            BaseExperiment
+        """
+        if path is None:
+            path = self.get_arg('macro')
+        if path is None:
+            return
+        with open(path, 'r') as f:
+            macro = yaml.load(f)
+        # Update config with macro
+        update_nested_dict(self._config, macro, copy=False)
+        # Done
+        return self
+
     def parse_experiment_directory(self):
         """Read path to experiment directory from command line arguments."""
         experiment_directory = self.get_arg(1)
@@ -633,6 +661,8 @@ class BaseExperiment(object):
         except FileNotFoundError:
             # No config file found, experiment._config remains an empty dict.
             pass
+        # Read macro if available
+        self.read_macro()
         # Update config from commandline args
         self.update_configuration_from_args()
         if update_git_revision:

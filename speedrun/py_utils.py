@@ -1,4 +1,6 @@
 from argparse import Namespace as _argparse__Namespace
+from collections import Mapping
+from copy import deepcopy
 
 
 class Namespace(_argparse__Namespace):
@@ -38,3 +40,15 @@ class Namespace(_argparse__Namespace):
     def new(self, tag, **kwargs):
         self.set(tag, Namespace(**kwargs))
         return self
+
+
+def update_nested_dict(this, other, copy=True):
+    for k, v in other.items():
+        d_v = this.get(k)
+        if isinstance(v, Mapping) and isinstance(d_v, Mapping):
+            update_nested_dict(d_v, v)
+        else:
+            if copy:
+                this[k] = deepcopy(v)
+            else:
+                this[k] = v
