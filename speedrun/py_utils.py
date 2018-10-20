@@ -42,13 +42,29 @@ class Namespace(_argparse__Namespace):
         return self
 
 
-def update_nested_dict(this, other, copy=True):
-    for k, v in other.items():
-        d_v = this.get(k)
-        if isinstance(v, Mapping) and isinstance(d_v, Mapping):
-            update_nested_dict(d_v, v)
-        else:
-            if copy:
-                this[k] = deepcopy(v)
+class MacroReader(object):
+    WAKE_KEY = '__speedrun__'
+    # Commands
+    COMMAND_PURGE = 'purge'
+
+    @classmethod
+    def parse_command(cls, cmd):
+        return cmd.split(';')
+
+    @classmethod
+    def update_dict(cls, config, macro, copy=True):
+        for macro_k, macro_v in macro.items():
+            config_v = config.get(macro_k)
+            # Check if we're purging existing content
+            if isinstance(macro_v, Mapping) and cls.WAKE_KEY in macro_v:
+                macro_command = macro_v.pop(cls.WAKE_KEY)
+                purge_now = 'purge' in cls.parse_command(macro_command)
             else:
-                this[k] = v
+                purge_now = False
+            if isinstance(macro_v, Mapping) and isinstance(config_v, Mapping) and not purge_now:
+                cls.update_dict(config_v, macro_v)
+            else:
+                if copy:
+                    config[macro_k] = deepcopy(macro_v)
+                else:
+                    config[macro_k] = macro_v

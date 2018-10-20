@@ -7,7 +7,7 @@ import subprocess
 import yaml
 # This registers the constructors
 from . import yaml_utils
-from .py_utils import Namespace, update_nested_dict
+from .py_utils import Namespace, MacroReader
 
 try:
     from torch import save
@@ -544,7 +544,7 @@ class BaseExperiment(object):
         with open(path, 'r') as f:
             macro = yaml.load(f)
         # Update config with macro
-        update_nested_dict(self._config, macro, copy=False)
+        MacroReader.update_dict(self._config, macro, copy=False)
         # Done
         return self
 
