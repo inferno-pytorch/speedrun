@@ -62,7 +62,6 @@ class InfernoMixin(object):
 
             self._trainer.to(self.device)
 
-            # self._meta_config['exclude_attrs_from_save'].append('_logger')
         return self._trainer
 
     def build_model(self):
@@ -128,11 +127,11 @@ class InfernoMixin(object):
                         callback = getattr(cb_class_module, cb)(**args)
                     self._trainer.register_callback(callback)
 
-    # overwrite this properties to define train loader
+    # overwrite this function to define train loader
     def build_train_loader(self):
         raise NotImplementedError()
 
-    # overwrite this properties to define validation loader
+    # overwrite this function to define validation loader
     def build_val_loader(self):
         return None
 
