@@ -524,7 +524,7 @@ class BaseExperiment(object):
         """Read path to experiment directory from command line arguments."""
         experiment_directory = self.get_arg(1)
         if experiment_directory is None:
-            raise RuntimeError("Can't find experiment directorz in command line args.")
+            raise RuntimeError("Can't find experiment directory in command line args.")
         self.experiment_directory = experiment_directory
         return self
 

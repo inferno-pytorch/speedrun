@@ -85,7 +85,8 @@ class InfernoMixin(object):
             print("No metric specified")
 
     def inferno_build_optimizer(self):
-        self._trainer.build_optimizer(self.get('trainer/optimizer'))
+        self._trainer.build_optimizer(self.get('trainer/optimizer'),
+                                      **self.get('trainer/optimizer_kwargs'))
 
     def inferno_build_intervals(self):
         if self.get('trainer/intervals/validate_every') is not None:
