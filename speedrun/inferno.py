@@ -10,6 +10,10 @@ try:
 except ImportError:
     TensorboardLogger = None
 
+try:
+    from firelight.inferno_callback import get_visualization_callback as firelight_visualizer
+except ImportError:
+    firelight_visualizer = None
 
 class InfernoMixin(object):
 
@@ -127,6 +131,14 @@ class InfernoMixin(object):
                     else:
                         callback = getattr(cb_class_module, cb)(**args)
                     self._trainer.register_callback(callback)
+
+        if self.get('firelight') is not None:
+            print(self.get('firelight'))
+            if firelight_visualizer is None:
+                raise ImportError("firelight could not be imported but is present in the config file")
+            else:
+                flc = firelight_visualizer(self.get('firelight'))
+                self._trainer.register_callback(flc)
 
     # overwrite this function to define train loader
     def build_train_loader(self):
