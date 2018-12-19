@@ -110,8 +110,13 @@ class InfernoMixin(object):
             # and set _logger to so it can be used by the Tensorboardmixin
             self._logger = tb_logger
 
-    def inferno_build_max_epochs(self):
-        self._trainer.set_max_num_epochs(self.get(f'trainer/max_epochs'))
+    def inferno_build_limits(self):
+        if self.get(f'trainer/max_epochs') is not None:
+            self._trainer.set_max_num_epochs(self.get(f'trainer/max_epochs'))
+        elif self.get(f'trainer/max_iterations') is not None:
+            self._trainer.set_max_num_iterationss(self.get(f'trainer/max_iterations'))
+        else:
+            print("No termination point specified!")
 
     def inferno_build_callbacks(self):
         # build all callbacks from nested conf file
