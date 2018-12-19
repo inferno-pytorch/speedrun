@@ -119,7 +119,7 @@ class InfernoMixin(object):
         if self.get(f'trainer/max_epochs') is not None:
             self._trainer.set_max_num_epochs(self.get(f'trainer/max_epochs'))
         elif self.get(f'trainer/max_iterations') is not None:
-            self._trainer.set_max_num_iterationss(self.get(f'trainer/max_iterations'))
+            self._trainer.set_max_num_iterations(self.get(f'trainer/max_iterations'))
         else:
             print("No termination point specified!")
 
