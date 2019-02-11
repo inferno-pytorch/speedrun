@@ -39,9 +39,15 @@ def torch_tensor(loader, node):
     return torch.tensor(loader.construct_sequence(node))
 
 
+def hyperopt(loader, node):
+    import pdb
+    pdb.set_trace()
+
 yaml.add_constructor('!Add', add)
 yaml.add_constructor('!Mul', mul)
 yaml.add_constructor('!Sub', sub)
 yaml.add_constructor('!Div', div)
 yaml.add_constructor('!NumpyArray', numpy_array)
 yaml.add_constructor('!TorchTensor', torch_tensor)
+yaml.add_constructor('!Hyperopt', hyperopt)
+

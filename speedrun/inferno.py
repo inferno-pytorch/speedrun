@@ -85,7 +85,8 @@ class InfernoMixin(object):
             print("No metric specified")
 
     def inferno_build_optimizer(self):
-        self._trainer.build_optimizer(self.get('trainer/optimizer'))
+        self._trainer.build_optimizer(self.get('trainer/optimizer'),
+                                      **self.get('trainer/optimizer_kwargs'))
 
     def inferno_build_intervals(self):
         if self.get('trainer/intervals/validate_every') is not None:
@@ -114,7 +115,7 @@ class InfernoMixin(object):
         if self.get(f'trainer/max_epochs') is not None:
             self._trainer.set_max_num_epochs(self.get(f'trainer/max_epochs'))
         elif self.get(f'trainer/max_iterations') is not None:
-            self._trainer.set_max_num_iterationss(self.get(f'trainer/max_iterations'))
+            self._trainer.set_max_num_iterations(self.get(f'trainer/max_iterations'))
         else:
             print("No termination point specified!")
 
@@ -153,11 +154,19 @@ class InfernoMixin(object):
             self._val_loader = self.build_val_loader()
         return self._val_loader
 
+    @property
+    def num_targets(self):
+        return 1
+
     def inferno_build_loaders(self):
-        self._trainer.bind_loader('train', self.train_loader) \
+        self._trainer.bind_loader('train',
+                                  self.train_loader,
+                                  num_targets=self.num_targets)
 
         if self.val_loader is not None:
-            self._trainer.bind_loader('validate', self.val_loader)
+            self._trainer.bind_loader('validate',
+                                      self.val_loader,
+                                      num_targets=self.num_targets)
 
     def train(self):
         return self.trainer.fit()
