@@ -139,7 +139,6 @@ class InfernoMixin(object):
                     self._trainer.register_callback(callback)
 
         if self.get('firelight') is not None:
-            print(self.get('firelight'))
             if firelight_visualizer is None:
                 raise ImportError("firelight could not be imported but is present in the config file")
             else:
