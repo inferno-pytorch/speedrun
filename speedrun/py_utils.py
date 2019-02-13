@@ -1,4 +1,6 @@
 from argparse import Namespace as _argparse__Namespace
+from pydoc import locate as loc
+from types import ModuleType
 
 
 class Namespace(_argparse__Namespace):
@@ -38,3 +40,37 @@ class Namespace(_argparse__Namespace):
     def new(self, tag, **kwargs):
         self.set(tag, Namespace(**kwargs))
         return self
+
+
+def locate(path, import_from=None, forceload=0, ensure_exist=True):
+    """pydoc locate relative to path(s) given in import_from"""
+    if isinstance(import_from, (list, tuple)):
+        for base in tuple(import_from) + (None,):
+            obj = locate(path, base, forceload, ensure_exist=False)
+            if obj is not None:
+                return obj
+        obj = None
+    else:
+        if isinstance(import_from, ModuleType):
+            import_from = import_from.__name__
+        assert import_from is None or isinstance(import_from, str), f'{type(import_from)}'
+        if import_from is not None:
+            obj = loc(import_from + '.' + path, forceload=forceload)
+        else:
+            obj = loc(path, forceload=forceload)
+    if ensure_exist and obj is None:
+        import_from = [m.__name__ for m in import_from] if isinstance(import_from, (list, tuple)) else import_from
+        assert False, f"Could not locate '{path}'" + (f' in {import_from}.' if import_from is not None else '.')
+    return obj
+
+
+if __name__ == '__main__':
+    print(locate('torch.sigmoid'))
+    print(locate('sigmoid', 'torch'))
+    print(locate('torch.sigmoid', 'torch'))
+    print(locate('sigmoid', ['numpy', 'torch']))
+    import torch as pytorch
+    import numpy as np
+    print(locate('sigmoid', [np, pytorch]))
+    print(locate('no_such_class_or_module', [np, pytorch], ensure_exist=False))
+    print(locate('no_such_class_or_module', [np, pytorch]))
