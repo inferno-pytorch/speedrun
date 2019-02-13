@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 import torch
+import os
 from .py_utils import locate
 
 try:
@@ -107,6 +108,11 @@ class InfernoMixin(object):
                 return
 
             tb_args = self.get('trainer/tensorboard')
+
+            # pop arguments specifying config logging
+            log_config = tb_args.pop('log_config', True)
+            split_keys = tb_args.pop('split_config_keys', True)
+
             tb_args['log_directory'] = f"{self.experiment_directory}/Logs"
             print("logging to ", tb_args['log_directory'])
             tb_logger = TensorboardLogger(**tb_args)
@@ -114,7 +120,32 @@ class InfernoMixin(object):
             # register Tensorboard logger
             self._trainer.build_logger(tb_logger)
             # and set _logger to so it can be used by the Tensorboardmixin
-            self._logger = tb_logger
+            self._logger = tb_logger.writer
+            if log_config:
+                self.log_configuration(split_keys)
+
+    def log_configuration(self, split_keys=True):
+        for filename in os.listdir(self.configuration_directory):
+            print(f'logging {filename}')
+            if filename.endswith('.yml'):
+                with open(os.path.join(self.configuration_directory, filename)) as f:
+                    if split_keys:
+                        tags = []
+                        paragraphs = []
+                        for i, line in enumerate(f.readlines()):
+                            # add tab to each line to make sure the paragraph is formatted as code
+                            if not line.startswith((' ', '#', '\t')) and len(line.split(':')) > 1:
+                                paragraphs.append('\t' + ':'.join(line.split(':')[1:]))
+                                tags.append(line.split(':')[0])
+                            else:
+                                paragraphs[-1] += '\t' + line
+                        for tag, paragraph in zip(tags, paragraphs):
+                            self._logger.add_text(tag=self.get_full_tag('/'.join([tag, filename])),
+                                                  text_string=paragraph, global_step=0)
+                    else:
+                        text = '\t' + f.read().replace('\n', '\n\t')
+                        self._logger.add_text(tag=self.get_full_tag(filename), text_string=text,
+                                              global_step=0)
 
     def inferno_build_limits(self):
         if self.get(f'trainer/max_epochs') is not None:

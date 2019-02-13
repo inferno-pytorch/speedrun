@@ -69,6 +69,12 @@ class TensorboardMixin(object):
                                   global_step=step)
         return self
 
+    def log_text(self, tag, text_string, step=None):
+        # noinspection PyUnresolvedReferences
+        step = self.step if step is None else step
+        self.logger.add_text(tag=self.get_full_tag(tag), text_string=text_string,
+                             global_step=step)
+
     def _log_x_now(self, x):
         # noinspection PyUnresolvedReferences
         frequency = self.get(f'tensorboard/log_{x}_every', None)
