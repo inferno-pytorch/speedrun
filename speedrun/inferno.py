@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 import torch
+from .py_utils import locate
 
 try:
     import inferno
@@ -127,7 +128,7 @@ class InfernoMixin(object):
         # build all callbacks from nested conf file
         if self.get('trainer/callbacks') is not None:
             for cb_class in self.get('trainer/callbacks'):
-                cb_class_module = getattr(inferno.trainers.callbacks, cb_class)
+                cb_class_module = locate(cb_class, inferno.trainers.callbacks)
                 for cb in self.get(f'trainer/callbacks/{cb_class}'):
                     print(f'creating trainer/callbacks/{cb_class}/{cb}')
                     args = self.get(f'trainer/callbacks/{cb_class}/{cb}')
