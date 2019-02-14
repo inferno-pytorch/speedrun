@@ -202,10 +202,14 @@ class InfernoMixin(object):
         return self.get('trainer/num_targets', 1)
 
     def inferno_build_loaders(self):
-        self._trainer.bind_loader('train', self.train_loader, num_targets=self.num_targets) \
+        self._trainer.bind_loader('train',
+                                  self.train_loader,
+                                  num_targets=self.num_targets)
 
         if self.val_loader is not None:
-            self._trainer.bind_loader('validate', self.val_loader, num_targets=self.num_targets)
+            self._trainer.bind_loader('validate',
+                                      self.val_loader,
+                                      num_targets=self.num_targets)
 
     def train(self):
         return self.trainer.fit()
