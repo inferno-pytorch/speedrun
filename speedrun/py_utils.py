@@ -59,7 +59,8 @@ def locate(path, import_from=None, forceload=0, ensure_exist=True):
         else:
             obj = loc(path, forceload=forceload)
     if ensure_exist and obj is None:
-        import_from = [m.__name__ for m in import_from] if isinstance(import_from, (list, tuple)) else import_from
+        import_from = [m.__name__ if isinstance(m, ModuleType) else m for m in import_from] \
+            if isinstance(import_from, (list, tuple)) else import_from
         assert False, f"Could not locate '{path}'" + (f' in {import_from}.' if import_from is not None else '.')
     return obj
 
