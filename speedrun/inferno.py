@@ -1,7 +1,8 @@
 from contextlib import contextmanager
 import torch
+from torch.utils.data import DataLoader
 import os
-from .py_utils import locate
+from .py_utils import locate, dynamic_import
 
 try:
     import inferno
@@ -16,6 +17,7 @@ try:
     from firelight.inferno_callback import get_visualization_callback as firelight_visualizer
 except ImportError:
     firelight_visualizer = None
+
 
 class InfernoMixin(object):
 
@@ -70,8 +72,40 @@ class InfernoMixin(object):
 
         return self._trainer
 
+    """
+    You may overwrite the build methods in the derived experiment classes
+    to define the model, criterion and metric that are harder to instantiate
+    (e.g. by requiring specially constructed input objects)
+    Note, that these methods should return the object in question,
+    which makes it possible to use the parent objects
+    """
+
     def build_model(self):
-        raise NotImplementedError("Overwrite this function to specify model")
+        network_class = dynamic_import(self.get('model/import_from'),
+                                       self.get('model/class'))
+        return network_class(**self.get('model/kwargs'))
+
+    def build_criterion(self):
+        tc = "trainer/criterion/"
+        criterion_class = dynamic_import(self.get(tc + 'import_from'),
+                                       self.get(tc + 'class'))
+        return criterion_class(**self.get(tc + 'kwargs'))
+
+    def build_metric(self):
+        return None
+
+    def build_train_loader(self):
+        dataset_class = dynamic_import(self.get('loader/import_from'),
+                                       self.get('loader/class'))
+        dataset = dataset_class(**self.get('loader/data_kwargs'))
+        return DataLoader(dataset, **self.get('loader/loader_kwargs'))
+
+    # overwrite this function to define validation loader
+    def build_val_loader(self):
+        dataset_class = dynamic_import(self.get('val_loader/import_from'),
+                                       self.get('val_loader/class'))
+        dataset = dataset_class(**self.get('val_loader/data_kwargs'))
+        return DataLoader(dataset, **self.get('val_loader/loader_kwargs'))
 
     @property
     def model(self):
@@ -80,9 +114,21 @@ class InfernoMixin(object):
             self._model = self.build_model()
         return self._model
 
+    @property
+    def criterion(self):
+        if not hasattr(self, '_criterion'):
+            self._criterion = self.build_criterion()
+        return self._criterion
+
+    @property
+    def metric(self):
+        if not hasattr(self, '_metric'):
+            self._criterion = self.build_metric()
+        return self._metric
+
     def inferno_build_criterion(self):
-        print("Using criterion ", self.get('trainer/criterion'))
-        self._trainer.build_criterion(self.get('trainer/criterion'))
+        import pdb; pdb.set_trace()
+        self._trainer.build_criterion(self.criterion)
 
     def inferno_build_metric(self):
         if self.get('trainer/metric') is not None:
@@ -175,14 +221,6 @@ class InfernoMixin(object):
             else:
                 flc = firelight_visualizer(self.get('firelight'))
                 self._trainer.register_callback(flc)
-
-    # overwrite this function to define train loader
-    def build_train_loader(self):
-        raise NotImplementedError()
-
-    # overwrite this function to define validation loader
-    def build_val_loader(self):
-        return None
 
     @property
     def train_loader(self):

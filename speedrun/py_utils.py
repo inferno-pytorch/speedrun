@@ -1,10 +1,11 @@
 from argparse import Namespace as _argparse__Namespace
 from pydoc import locate as loc
 from types import ModuleType
-
+from importlib import import_module
 
 class Namespace(_argparse__Namespace):
     """A fancier Namespace."""
+
     def get(self, tag, default=None, ensure_exists=False):
         paths = tag.split("/")
         data = self.__dict__
@@ -64,6 +65,13 @@ def locate(path, import_from=None, forceload=0, ensure_exist=True):
         assert False, f"Could not locate '{path}'" + (f' in {import_from}.' if import_from is not None else '.')
     return obj
 
+
+def dynamic_import(module_name, class_name):
+    """import module based on string and get class object by name"""
+    import pdb; pdb.set_trace()
+    module = import_module(module_name)
+    mclass = getattr(module, class_name)
+    return mclass
 
 if __name__ == '__main__':
     print(locate('torch.sigmoid'))
