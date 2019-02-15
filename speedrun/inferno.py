@@ -2,7 +2,7 @@ from contextlib import contextmanager
 import torch
 from torch.utils.data import DataLoader
 import os
-from .py_utils import locate, dynamic_import
+from .py_utils import locate, get_single_key_value_pair, create_instance
 
 try:
     import inferno
@@ -19,7 +19,65 @@ except ImportError:
     firelight_visualizer = None
 
 
-class InfernoMixin(object):
+class ParsingMixin(object):
+    """
+    The ParsingMixin provides a convenient way to create
+    model, criterion metric and data loaders from 
+    You may overwrite the build methods in the derived experiment classes
+    to define the model, criterion and metric that are harder to instantiate
+    (e.g. by requiring specially constructed input objects)
+    Note, that these methods should return the object in question,
+    which makes it possible to use the parent objects
+    """
+    def build_model(self):
+        return create_instance(self.get('model'))
+
+    @property
+    def model(self):
+        # Build model if it doesn't exist
+        if not hasattr(self, '_model'):
+            self._model = self.build_model()
+            assert self._model is not None
+        return self._model
+
+    def build_train_loader(self):
+        loader_kwargs = self.get('loader')
+        dataset = create_instance(loader_kwargs['dataset'])
+        loader_kwargs['dataset'] = dataset
+
+        return DataLoader(**loader_kwargs)
+
+    # overwrite this function to define validation loader
+    def build_val_loader(self):
+        loader_kwargs = self.get('val_loader')
+        dataset = create_instance(loader_kwargs['dataset'])
+        loader_kwargs['dataset'] = dataset
+
+        return DataLoader(**loader_kwargs)
+
+    def build_criterion(self):
+        return create_instance(self.get('criterion'))
+
+    def build_metric(self):
+        metric = self.get('metric')
+        if metric is not None:
+            metric = create_instance(metric)
+        return metric
+
+    @property
+    def criterion(self):
+        if not hasattr(self, '_criterion'):
+            self._criterion = self.build_criterion()
+        return self._criterion
+
+    @property
+    def metric(self):
+        if not hasattr(self, '_metric'):
+            self._criterion = self.build_metric()
+        return self._metric
+
+
+class InfernoMixin(ParsingMixin):
 
     @property
     def tagscope(self):
@@ -72,62 +130,7 @@ class InfernoMixin(object):
 
         return self._trainer
 
-    """
-    You may overwrite the build methods in the derived experiment classes
-    to define the model, criterion and metric that are harder to instantiate
-    (e.g. by requiring specially constructed input objects)
-    Note, that these methods should return the object in question,
-    which makes it possible to use the parent objects
-    """
-
-    def build_model(self):
-        network_class = dynamic_import(self.get('model/import_from'),
-                                       self.get('model/class'))
-        return network_class(**self.get('model/kwargs'))
-
-    def build_criterion(self):
-        tc = "trainer/criterion/"
-        criterion_class = dynamic_import(self.get(tc + 'import_from'),
-                                       self.get(tc + 'class'))
-        return criterion_class(**self.get(tc + 'kwargs'))
-
-    def build_metric(self):
-        return None
-
-    def build_train_loader(self):
-        dataset_class = dynamic_import(self.get('loader/import_from'),
-                                       self.get('loader/class'))
-        dataset = dataset_class(**self.get('loader/data_kwargs'))
-        return DataLoader(dataset, **self.get('loader/loader_kwargs'))
-
-    # overwrite this function to define validation loader
-    def build_val_loader(self):
-        dataset_class = dynamic_import(self.get('val_loader/import_from'),
-                                       self.get('val_loader/class'))
-        dataset = dataset_class(**self.get('val_loader/data_kwargs'))
-        return DataLoader(dataset, **self.get('val_loader/loader_kwargs'))
-
-    @property
-    def model(self):
-        # Build model if it doesn't exist
-        if not hasattr(self, '_model'):
-            self._model = self.build_model()
-        return self._model
-
-    @property
-    def criterion(self):
-        if not hasattr(self, '_criterion'):
-            self._criterion = self.build_criterion()
-        return self._criterion
-
-    @property
-    def metric(self):
-        if not hasattr(self, '_metric'):
-            self._criterion = self.build_metric()
-        return self._metric
-
     def inferno_build_criterion(self):
-        import pdb; pdb.set_trace()
         self._trainer.build_criterion(self.criterion)
 
     def inferno_build_metric(self):
@@ -137,8 +140,9 @@ class InfernoMixin(object):
             print("No metric specified")
 
     def inferno_build_optimizer(self):
-        self._trainer.build_optimizer(self.get('trainer/optimizer'),
-                                      **self.get('trainer/optimizer_kwargs'))
+        optimizer_dict = self.get('trainer/optimizer')
+        for o in optimizer_dict:
+            self._trainer.build_optimizer(o, **optimizer_dict[o])
 
     def inferno_build_intervals(self):
         if self.get('trainer/intervals/validate_every') is not None:

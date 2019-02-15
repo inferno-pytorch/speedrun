@@ -3,6 +3,7 @@ from pydoc import locate as loc
 from types import ModuleType
 from importlib import import_module
 
+
 class Namespace(_argparse__Namespace):
     """A fancier Namespace."""
 
@@ -68,10 +69,31 @@ def locate(path, import_from=None, forceload=0, ensure_exist=True):
 
 def dynamic_import(module_name, class_name):
     """import module based on string and get class object by name"""
-    import pdb; pdb.set_trace()
     module = import_module(module_name)
     mclass = getattr(module, class_name)
     return mclass
+
+
+def get_single_key_value_pair(d):
+    """
+    Returns the key and value of a one element dictionary, checking that it actually has only one element
+    Parameters
+    ----------
+    d : dict
+
+    Returns
+    -------
+    tuple
+
+    """
+    assert isinstance(d, dict), f'{d} is not a dictionary'
+    assert len(d) == 1, f'{d} is not of length 1'
+    return next(iter(d.items()))
+
+def create_instance(class_dict):
+    mclass, kwargs = get_single_key_value_pair(class_dict)
+    network_class = locate(mclass)
+    return network_class(**kwargs)
 
 if __name__ == '__main__':
     print(locate('torch.sigmoid'))
