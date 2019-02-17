@@ -2,6 +2,7 @@ from contextlib import contextmanager
 import torch
 import os
 from .py_utils import locate
+from .log_anywhere import register_logger
 
 try:
     import inferno
@@ -16,6 +17,16 @@ try:
     from firelight.inferno_callback import get_visualization_callback as firelight_visualizer
 except ImportError:
     firelight_visualizer = None
+
+
+# logger to sent images to the trainer to be visualized by firelight from anywhere
+class FirelightLogger(object):
+    def __init__(self, trainer):
+        self.trainer = trainer
+
+    def log_image(self, tag, value):
+        self.trainer.update_state(tag, value.detach().cpu())
+
 
 class InfernoMixin(object):
 
@@ -65,6 +76,11 @@ class InfernoMixin(object):
             for fname in dir(self):
                 if fname.startswith('inferno_build_'):
                     getattr(self, fname)()
+
+            # add callback to increase step counter
+            # noinspection PyUnresolvedReferences
+            self._trainer.register_callback(lambda **_: self.next_step(),
+                                            trigger='end_of_training_iteration')
 
             self._trainer.to(self.device)
 
@@ -173,6 +189,9 @@ class InfernoMixin(object):
             if firelight_visualizer is None:
                 raise ImportError("firelight could not be imported but is present in the config file")
             else:
+                # if requested, register anywhere logger for firelight
+                register_logger(FirelightLogger(self.trainer), self.get('firelight').pop('log_anywhere', 'all'))
+
                 flc = firelight_visualizer(self.get('firelight'))
                 self._trainer.register_callback(flc)
 
