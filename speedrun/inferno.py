@@ -4,6 +4,7 @@ from torch.utils.data import DataLoader
 import os
 from .py_utils import locate, get_single_key_value_pair, create_instance
 from .log_anywhere import register_logger
+from inferno.io.transform import Compose
 
 try:
     import inferno
@@ -20,12 +21,16 @@ except ImportError:
     firelight_visualizer = None
 
 # logger to sent images to the trainer to be visualized by firelight from anywhere
+
+
 class FirelightLogger(object):
+
     def __init__(self, trainer):
         self.trainer = trainer
 
     def log_image(self, tag, value):
         self.trainer.update_state(tag, value.detach().cpu())
+
 
 class ParsingMixin(object):
     """
@@ -37,8 +42,19 @@ class ParsingMixin(object):
     Note, that these methods should return the object in question,
     which makes it possible to use the parent objects
     """
+
     def build_model(self):
-        return create_instance(self.get('model'))
+        model_dict = self.get('model')
+        
+        model_path = model_dict[next(iter(model_dict.keys()))].pop('loadfrom', None)
+        model = create_instance(model_dict)
+        
+        if model_path is not None:
+            print(f"loading model from {model_path}")
+            state_dict = torch.load(model_path)["_model"].state_dict()
+            model.load_state_dict(state_dict)
+
+        return model
 
     @property
     def model(self):
@@ -52,7 +68,6 @@ class ParsingMixin(object):
         loader_kwargs = self.get('loader')
         dataset = create_instance(loader_kwargs['dataset'])
         loader_kwargs['dataset'] = dataset
-
         return DataLoader(**loader_kwargs)
 
     # overwrite this function to define validation loader
@@ -81,8 +96,9 @@ class ParsingMixin(object):
     @property
     def metric(self):
         if not hasattr(self, '_metric'):
-            self._criterion = self.build_metric()
+            self._metric = self.build_metric()
         return self._metric
+
 
 class InfernoMixin(ParsingMixin):
 
@@ -135,8 +151,8 @@ class InfernoMixin(ParsingMixin):
 
             # add callback to increase step counter
             # noinspection PyUnresolvedReferences
-            self._trainer.register_callback(lambda **_: self.next_step(),
-                                            trigger='end_of_training_iteration')
+            # self._trainer.register_callback(lambda **_: self.next_step(),
+            #                                 trigger='end_of_training_iteration')
 
             self._trainer.to(self.device)
 
@@ -146,8 +162,8 @@ class InfernoMixin(ParsingMixin):
         self._trainer.build_criterion(self.criterion)
 
     def inferno_build_metric(self):
-        if self.get('trainer/metric') is not None:
-            self._trainer.build_metric(self.get('trainer/metric'))
+        if self.metric is not None:
+            self._trainer.build_metric(self.metric)
         else:
             print("No metric specified")
 
@@ -157,11 +173,15 @@ class InfernoMixin(ParsingMixin):
             self._trainer.build_optimizer(o, **optimizer_dict[o])
 
     def inferno_build_intervals(self):
+        # TODO: infer xxx_every call from dictionary directly
         if self.get('trainer/intervals/validate_every') is not None:
             self._trainer.validate_every(**self.get('trainer/intervals/validate_every'))
 
         if self.get('trainer/intervals/save_every') is not None:
             self._trainer.save_every(self.get('trainer/intervals/save_every'))
+        
+        if self.get('trainer/intervals/evaluate_metric_every') is not None:
+            self._trainer.evaluate_metric_every(self.get('trainer/intervals/evaluate_metric_every'))
 
     def inferno_build_tensorboard(self):
         if self.get('trainer/tensorboard') is not None:
@@ -267,6 +287,9 @@ class InfernoMixin(ParsingMixin):
             self._trainer.bind_loader('validate',
                                       self.val_loader,
                                       num_targets=self.num_targets)
+
+    def create_transform(self, list_of_transforms):
+        return Compose(*[create_instance(t) for t in list_of_transforms])
 
     def train(self):
         return self.trainer.fit()

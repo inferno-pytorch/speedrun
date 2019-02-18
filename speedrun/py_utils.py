@@ -93,7 +93,10 @@ def get_single_key_value_pair(d):
 def create_instance(class_dict):
     mclass, kwargs = get_single_key_value_pair(class_dict)
     network_class = locate(mclass)
-    return network_class(**kwargs)
+    if "noargs" in kwargs:
+        return network_class()
+    else:
+        return network_class(**kwargs)
 
 if __name__ == '__main__':
     print(locate('torch.sigmoid'))
