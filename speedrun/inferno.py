@@ -3,7 +3,7 @@ import torch
 from torch.utils.data import DataLoader
 import os
 from .py_utils import locate, get_single_key_value_pair, create_instance
-from .log_anywhere import register_logger
+from .log_anywhere import register_logger, log_scalar
 from .tensorboard import TensorboardMixin
 from inferno.io.transform import Compose
 
@@ -15,6 +15,11 @@ try:
     from inferno.trainers.callbacks.logging.tensorboard import TensorboardLogger
 except ImportError:
     TensorboardLogger = None
+
+try:
+    from inferno.trainers.callbacks.base import Callback
+except ImportError:
+    Callback = object
 
 try:
     from firelight.inferno_callback import get_visualization_callback as firelight_visualizer
@@ -33,10 +38,24 @@ class FirelightLogger(object):
         self.trainer.update_state(tag, value.detach().cpu())
 
 
+class IncreaseStepCallback(Callback):
+    def __init__(self, experiment):
+        super(IncreaseStepCallback, self).__init__()
+        self.experiment = experiment
+
+    def end_of_training_iteration(self, **_):
+        print('jep')
+        self.experiment.next_step()
+        log_scalar('step', self.experiment.step)
+
+    def __getstate__(self):
+        return {}
+
+
 class ParsingMixin(object):
     """
     The ParsingMixin provides a convenient way to create
-    model, criterion metric and data loaders from 
+    model, criterion metric and data loaders from
     You may overwrite the build methods in the derived experiment classes
     to define the model, criterion and metric that are harder to instantiate
     (e.g. by requiring specially constructed input objects)
@@ -61,6 +80,7 @@ class ParsingMixin(object):
     def model(self):
         # Build model if it doesn't exist
         if not hasattr(self, '_model'):
+            # noinspection PyAttributeOutsideInit
             self._model = self.build_model()
             assert self._model is not None
         return self._model
@@ -91,12 +111,14 @@ class ParsingMixin(object):
     @property
     def criterion(self):
         if not hasattr(self, '_criterion'):
+            # noinspection PyAttributeOutsideInit
             self._criterion = self.build_criterion()
         return self._criterion
 
     @property
     def metric(self):
         if not hasattr(self, '_metric'):
+            # noinspection PyAttributeOutsideInit
             self._metric = self.build_metric()
         return self._metric
 
@@ -128,6 +150,7 @@ class InfernoMixin(ParsingMixin):
     @property
     def device(self):
         if self._device is None:
+            # noinspection PyAttributeOutsideInit
             self._device = torch.device(self.get('device'))
         return self._device
 
@@ -142,6 +165,7 @@ class InfernoMixin(ParsingMixin):
                                       "pip install inferno-pytorch`")
         # Build trainer if it doesn't exist
         if not hasattr(self, '_trainer'):
+            # noinspection PyAttributeOutsideInit
             self._trainer = inferno.trainers.basic.Trainer(self.model)\
                                    .save_to_directory(self.experiment_directory)
 
@@ -152,8 +176,7 @@ class InfernoMixin(ParsingMixin):
 
             # add callback to increase step counter
             # noinspection PyUnresolvedReferences
-            # self._trainer.register_callback(lambda **_: self.next_step(),
-            #                                 trigger='end_of_training_iteration')
+            self._trainer.register_callback(IncreaseStepCallback(self))
 
             self._trainer.to(self.device)
 
@@ -212,8 +235,8 @@ class InfernoMixin(ParsingMixin):
             if isinstance(self, TensorboardMixin):
                 register_logger(self, log_anywhere_keys)
             else:
-                assert log_anywhere_keys is None, \
-                f'Cannot register anywhere logging for keys {log_anywhere_keys}, please inherit from TensorboardMixin.'
+                assert log_anywhere_keys is None, f'Cannot register anywhere logging for keys {log_anywhere_keys}, ' \
+                                                  f'please inherit from TensorboardMixin.'
 
     def log_configuration(self, split_keys=True):
         for filename in os.listdir(self.configuration_directory):
