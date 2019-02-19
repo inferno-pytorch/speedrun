@@ -67,13 +67,6 @@ def locate(path, import_from=None, forceload=0, ensure_exist=True):
     return obj
 
 
-def dynamic_import(module_name, class_name):
-    """import module based on string and get class object by name"""
-    module = import_module(module_name)
-    mclass = getattr(module, class_name)
-    return mclass
-
-
 def get_single_key_value_pair(d):
     """
     Returns the key and value of a one element dictionary, checking that it actually has only one element
