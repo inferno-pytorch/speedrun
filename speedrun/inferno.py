@@ -4,6 +4,7 @@ from torch.utils.data import DataLoader
 import os
 from .py_utils import locate, get_single_key_value_pair, create_instance
 from .log_anywhere import register_logger
+from .tensorboard import TensorboardMixin
 from inferno.io.transform import Compose
 
 try:
@@ -195,16 +196,25 @@ class InfernoMixin(ParsingMixin):
             log_config = tb_args.pop('log_config', True)
             split_keys = tb_args.pop('split_config_keys', True)
 
+            # pop argument specifying anywhere logging for TensorboardMixin # TODO: how to put this in TensorboardMixin?
+            log_anywhere_keys = tb_args.pop('log_anywhere', None)
+
             tb_args['log_directory'] = f"{self.experiment_directory}/Logs"
             print("logging to ", tb_args['log_directory'])
             tb_logger = TensorboardLogger(**tb_args)
 
             # register Tensorboard logger
             self._trainer.build_logger(tb_logger)
-            # and set _logger to so it can be used by the Tensorboardmixin
+            # and set _logger to so it can be used by the TensorboardMixin
             self._logger = tb_logger.writer
             if log_config:
                 self.log_configuration(split_keys)
+            # If experiment also uses TensorboardMixin, register it for anywhere logging
+            if isinstance(self, TensorboardMixin):
+                register_logger(self, log_anywhere_keys)
+            else:
+                assert log_anywhere_keys is None, \
+                f'Cannot register anywhere logging for keys {log_anywhere_keys}, please inherit from TensorboardMixin.'
 
     def log_configuration(self, split_keys=True):
         for filename in os.listdir(self.configuration_directory):
