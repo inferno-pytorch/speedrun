@@ -173,16 +173,15 @@ class InfernoMixin(ParsingMixin):
         for o in optimizer_dict:
             self._trainer.build_optimizer(o, **optimizer_dict[o])
 
-    def inferno_build_intervals(self):
-        # TODO: infer xxx_every call from dictionary directly
-        if self.get('trainer/intervals/validate_every') is not None:
-            self._trainer.validate_every(**self.get('trainer/intervals/validate_every'))
+    _INTERVAL_KEYS = ['validate_every', 'save_every', 'evaluate_metric_every']
 
-        if self.get('trainer/intervals/save_every') is not None:
-            self._trainer.save_every(self.get('trainer/intervals/save_every'))
-        
-        if self.get('trainer/intervals/evaluate_metric_every') is not None:
-            self._trainer.evaluate_metric_every(self.get('trainer/intervals/evaluate_metric_every'))
+    def inferno_build_intervals(self):
+        for key, arguments in self.get('trainer/intervals').items():
+            assert key in self._INTERVAL_KEYS, f'Cannot set interval "{key}". Valid intervals: {self._INTERVAL_KEYS}'
+            if isinstance(arguments, dict):
+                getattr(self._trainer, key)(**arguments)
+            else:
+                getattr(self._trainer, key)(arguments)
 
     def inferno_build_tensorboard(self):
         if self.get('trainer/tensorboard') is not None:
