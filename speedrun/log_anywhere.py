@@ -15,10 +15,11 @@ _KEY_MAPPING = {
 
 
 def register_logger(logger, keys):
-    print(keys)
     if keys in (False, None):
         return
     _LOGGERS.append(logger)
+    if isinstance(keys, str):
+        keys = [keys]
     if isinstance(keys, (list, tuple)):
         for key in keys:
             assert key in _KEY_MAPPING, f'Key {key} not found. Available keys: {list(_KEY_MAPPING.keys())}'
