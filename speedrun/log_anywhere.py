@@ -15,7 +15,6 @@ _KEY_MAPPING = {
 
 
 def register_logger(logger, keys):
-    print(keys)
     if keys in (False, None):
         return
     _LOGGERS.append(logger)
@@ -30,7 +29,7 @@ def _log_object(object_type, *args, **kwargs):
     log_func_name = 'log_' + object_type
     for logger, keys in zip(_LOGGERS, _KEYS):
         if keys not in (True, 'all'):
-            use_current_logger = log_func_name in keys
+            use_current_logger = object_type in keys
         else:
             use_current_logger = hasattr(logger, log_func_name)
         if use_current_logger:
