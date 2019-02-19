@@ -643,6 +643,3 @@ class BaseExperiment(object):
             self.dump_configuration()
         # Done
         return self
-
-
-

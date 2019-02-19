@@ -31,7 +31,6 @@ class IOMixin(object):
     def printing_to_file_name(self):
         return getattr(self, '_print_filename', 'stdout')
 
-
     def print_to_file(self, yes=True, fname='stdout'):
         setattr(self, '_print_to_file', yes)
         setattr(self, '_print_filename', fname)

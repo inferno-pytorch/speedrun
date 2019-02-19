@@ -90,6 +90,7 @@ def get_single_key_value_pair(d):
     assert len(d) == 1, f'{d} is not of length 1'
     return next(iter(d.items()))
 
+
 def create_instance(class_dict):
     mclass, kwargs = get_single_key_value_pair(class_dict)
     network_class = locate(mclass)
@@ -97,6 +98,7 @@ def create_instance(class_dict):
         return network_class()
     else:
         return network_class(**kwargs)
+
 
 if __name__ == '__main__':
     print(locate('torch.sigmoid'))

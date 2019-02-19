@@ -99,4 +99,3 @@ class TensorboardMixin(object):
     @property
     def log_histograms_now(self):
         return self._log_x_now('histograms')
-
