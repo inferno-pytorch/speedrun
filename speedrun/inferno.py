@@ -44,7 +44,6 @@ class IncreaseStepCallback(Callback):
         self.experiment = experiment
 
     def end_of_training_iteration(self, **_):
-        print('jep')
         self.experiment.next_step()
         log_scalar('step', self.experiment.step)
 
@@ -63,8 +62,11 @@ class ParsingMixin(object):
     which makes it possible to use the parent objects
     """
 
-    def build_model(self):
-        model_dict = self.get('model')
+    def build_model(self, model_dict=None):
+        if model_dict is None:
+            model_dict = self.get('model')
+        elif isinstance(model_dict, str):
+            model_dict = self.get(model_dict)
         
         model_path = model_dict[next(iter(model_dict.keys()))].pop('loadfrom', None)
         model = create_instance(model_dict)
@@ -295,7 +297,6 @@ class InfernoMixin(ParsingMixin):
 
     @property
     def train_loader(self):
-        # Build model if it doesn't exist
         if not hasattr(self, '_train_loader'):
             self._train_loader = self.build_train_loader()
         return self._train_loader
