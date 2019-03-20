@@ -44,6 +44,20 @@ class Namespace(_argparse__Namespace):
         return self
 
 
+def recursive_update_inplace(d1, d2):
+    '''
+    Update d1 with the data from d2 recursively
+    :param d1: dict
+    :param d2: dict
+    :return: None
+    '''
+    for key, value in d2.items():
+        if key in d1 and isinstance(d1[key], dict) and isinstance(value, dict):
+            recursive_update_inplace(d1[key], value)
+        else:
+            d1[key] = value
+
+
 def locate(path, import_from=None, forceload=0, ensure_exist=True):
     """pydoc locate relative to path(s) given in import_from"""
     if isinstance(import_from, (list, tuple)):

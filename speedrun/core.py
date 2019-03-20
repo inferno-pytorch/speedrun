@@ -7,7 +7,7 @@ import subprocess
 import yaml
 # This registers the constructors
 from . import yaml_utils
-from .py_utils import Namespace
+from .py_utils import Namespace, recursive_update_inplace
 
 try:
     from torch import save
@@ -128,7 +128,7 @@ class BaseExperiment(object):
         Parameters
         ----------
         from_experiment_directory : str
-            The other experiment directory to inherit from.
+            The other experiment directory to inherit from, or path to the configuration file to load
         file_name : str
             Name of the .yml configuration file.
         read : bool
@@ -138,7 +138,8 @@ class BaseExperiment(object):
             BaseExperiment
 
         """
-        source_path = os.path.join(from_experiment_directory, 'Configurations', file_name)
+        source_path = from_experiment_directory if from_experiment_directory.endswith(('.yml', '.yaml')) else \
+            os.path.join(from_experiment_directory, 'Configurations', file_name)
         target_path = os.path.join(self.configuration_directory, file_name)
         shutil.copy(source_path, target_path)
         if read:
@@ -241,6 +242,24 @@ class BaseExperiment(object):
                 tag = arg.replace('--config.', '').replace('.', '/')
                 value = self.get_arg(arg.lstrip('--'), ensure_exists=True)
                 self.set(tag, value)
+        return self
+
+    def update_configuration_from_file(self, path):
+        """
+        Override fields in the configuration recursively with values from another one
+
+        Parameters
+        ----------
+        path : str
+            Path to the configuration file to read values from.
+
+        Returns
+        -------
+            BaseExperiment
+        """
+        with open(path, 'r') as f:
+            update_config = yaml.load(f)
+        recursive_update_inplace(self._config, update_config)
         return self
 
     def register_unpickleable(self, *attributes):
@@ -633,6 +652,17 @@ class BaseExperiment(object):
         except FileNotFoundError:
             # No config file found, experiment._config remains an empty dict.
             pass
+        # Update config from extra files specified
+        if self.get_arg('update') is not None:
+            self.update_configuration_from_file(self.get_arg('update'))
+        i = 0
+        while True:
+            path = self.get_arg(f'update{i}')
+            if path is not None:
+                self.update_configuration_from_file(path)
+                i += 1
+            else:
+                break
         # Update config from commandline args
         self.update_configuration_from_args()
         if update_git_revision:
