@@ -6,8 +6,8 @@ import subprocess
 
 import yaml
 # This registers the constructors
-from . import yaml_utils
-from .py_utils import Namespace, recursive_update_inplace
+from .yaml_utils import ObjectLoader, recursive_update
+from .py_utils import Namespace
 
 try:
     from torch import save
@@ -138,8 +138,18 @@ class BaseExperiment(object):
             BaseExperiment
 
         """
-        source_path = from_experiment_directory if from_experiment_directory.endswith(('.yml', '.yaml')) else \
-            os.path.join(from_experiment_directory, 'Configurations', file_name)
+        if from_experiment_directory.endswith(('.yml', '.yaml')):
+            source_path = from_experiment_directory
+        else:
+            # get all config files present in 'from_experiment_directory'
+            file_names = [f for f in os.listdir(os.path.join(from_experiment_directory, 'Configurations'))
+                          if f.endswith(('.yml', '.yaml'))]
+            if file_name not in file_names:
+                assert len(file_names) == 1, \
+                    f'Did not find exactly one config file, but {len(file_names)}: {file_names}'
+                source_path = os.path.join(from_experiment_directory, 'Configurations', file_names[0])
+            else:
+                source_path = os.path.join(from_experiment_directory, 'Configurations', file_name)
         target_path = os.path.join(self.configuration_directory, file_name)
         shutil.copy(source_path, target_path)
         if read:
@@ -259,7 +269,7 @@ class BaseExperiment(object):
         """
         with open(path, 'r') as f:
             update_config = yaml.load(f)
-        recursive_update_inplace(self._config, update_config)
+        self._config = recursive_update(self._config, update_config)
         return self
 
     def register_unpickleable(self, *attributes):
@@ -517,7 +527,7 @@ class BaseExperiment(object):
         """Pack kwargs to a Namespace object."""
         return Namespace(**kwargs)
 
-    def read_config_file(self, file_name='train_config.yml', path=None):
+    def read_config_file(self, file_name='train_config.yml', path=None, load_undumpable=False):
         """
         Read configuration from a YAML file.
 
@@ -536,7 +546,8 @@ class BaseExperiment(object):
         if not os.path.exists(path):
             raise FileNotFoundError
         with open(path, 'r') as f:
-            self._config = yaml.load(f)
+            loader = ObjectLoader if load_undumpable else yaml.Loader
+            self._config = yaml.load(f, loader)
         return self
 
     def parse_experiment_directory(self):
@@ -603,7 +614,7 @@ class BaseExperiment(object):
             self.set("git_rev", gitrev)
         return self
 
-    def auto_setup(self, update_git_revision=True, dump_configuration=True):
+    def auto_setup(self, update_git_revision=True, dump_configuration=True, construct_objects=True):
         """
         Set things up automagically.
 
@@ -613,6 +624,8 @@ class BaseExperiment(object):
             Whether to update current configuration with the git revision hash.
         dump_configuration : bool
             Whether to update the configuration in file.
+        construct_objects: bool
+            Whether to load arbitrary python objects tagged with '!Obj'. If True, dump_configuration must be too.
 
         Examples
         --------
@@ -671,5 +684,9 @@ class BaseExperiment(object):
         if dump_configuration:
             # Dump final config file
             self.dump_configuration()
+        if construct_objects:
+            # Reload configuration, parsing generally not dumpable python objects (marked by !Obj, see yaml_utils.py).
+            assert dump_configuration, f'can only construct objects if allowed to dump first'
+            self.read_config_file(load_undumpable=True)
         # Done
         return self

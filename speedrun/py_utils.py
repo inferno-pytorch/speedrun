@@ -1,7 +1,9 @@
 from argparse import Namespace as _argparse__Namespace
 from pydoc import locate as loc
+from importlib import util as imputils
 from types import ModuleType
 from importlib import import_module
+import os
 
 
 class Namespace(_argparse__Namespace):
@@ -98,13 +100,22 @@ def get_single_key_value_pair(d):
     return next(iter(d.items()))
 
 
-def create_instance(class_dict):
+def create_instance(class_dict, import_from=None):
+
     mclass, kwargs = get_single_key_value_pair(class_dict)
-    network_class = locate(mclass)
+
+    # add extra import locations that might be specified in the class dict
+    locations_from_class_dict = kwargs.pop('import_from', None)
+    import_from = import_from if locations_from_class_dict is None else [locations_from_class_dict, import_from]
+
+    # get positional arguments if specified
+    args = kwargs.pop('args', [])
+
+    network_class = locate(mclass, import_from)
     if "noargs" in kwargs:
         return network_class()
     else:
-        return network_class(**kwargs)
+        return network_class(*args, **kwargs)
 
 
 if __name__ == '__main__':
