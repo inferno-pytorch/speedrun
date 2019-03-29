@@ -60,11 +60,11 @@ def recursive_update_inplace(d1, d2):
             d1[key] = value
 
 
-def locate(path, import_from=None, forceload=0, ensure_exist=True):
-    """pydoc locate relative to path(s) given in import_from"""
+def locate(name, import_from=None, forceload=0, ensure_exist=True):
+    """pydoc locate relative to name(s) given in import_from"""
     if isinstance(import_from, (list, tuple)):
         for base in tuple(import_from) + (None,):
-            obj = locate(path, base, forceload, ensure_exist=False)
+            obj = locate(name, base, forceload, ensure_exist=False)
             if obj is not None:
                 return obj
         obj = None
@@ -79,14 +79,14 @@ def locate(path, import_from=None, forceload=0, ensure_exist=True):
             module_spec = imputils.spec_from_file_location('imported_file', import_from)
             module = imputils.module_from_spec(module_spec)
             module_spec.loader.exec_module(module)
-            obj = getattr(module, path, None)
+            obj = getattr(module, name, None)
         else:
             # import the given class with pydoc.locate
-            obj = loc(path if import_from is None else import_from + '.' + path, forceload=forceload)
+            obj = loc(name if import_from is None else import_from + '.' + name, forceload=forceload)
     if ensure_exist and obj is None:
         import_from = [m.__name__ if isinstance(m, ModuleType) else m for m in import_from] \
             if isinstance(import_from, (list, tuple)) else import_from
-        assert False, f"Could not locate '{path}'" + (f' in {import_from}.' if import_from is not None else '.')
+        assert False, f"Could not locate '{name}'" + (f' in {import_from}.' if import_from is not None else '.')
     return obj
 
 
