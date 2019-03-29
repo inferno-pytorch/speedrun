@@ -72,10 +72,17 @@ def locate(path, import_from=None, forceload=0, ensure_exist=True):
         if isinstance(import_from, ModuleType):
             import_from = import_from.__name__
         assert import_from is None or isinstance(import_from, str), f'{type(import_from)}'
-        if import_from is not None:
-            obj = loc(import_from + '.' + path, forceload=forceload)
+
+        if isinstance(import_from, str) and os.path.isfile(import_from):
+            # import the given name from the file
+            assert import_from.endswith('.py'), f'{import_from}'
+            module_spec = imputils.spec_from_file_location('imported_file', import_from)
+            module = imputils.module_from_spec(module_spec)
+            module_spec.loader.exec_module(module)
+            obj = getattr(module, path, None)
         else:
-            obj = loc(path, forceload=forceload)
+            # import the given class with pydoc.locate
+            obj = loc(path if import_from is None else import_from + '.' + path, forceload=forceload)
     if ensure_exist and obj is None:
         import_from = [m.__name__ if isinstance(m, ModuleType) else m for m in import_from] \
             if isinstance(import_from, (list, tuple)) else import_from
