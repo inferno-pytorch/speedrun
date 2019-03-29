@@ -62,6 +62,11 @@ class ParsingMixin(object):
     which makes it possible to use the parent objects
     """
 
+    MODEL_LOCATIONS = []
+    DATASET_LOCATIONS = []
+    CRITERION_LOCATIONS = []
+    METRIC_LOCATIONS = []
+
     def build_model(self, model_dict=None):
         if model_dict is None:
             model_dict = self.get('model')
@@ -69,7 +74,7 @@ class ParsingMixin(object):
             model_dict = self.get(model_dict)
         
         model_path = model_dict[next(iter(model_dict.keys()))].pop('loadfrom', None)
-        model = create_instance(model_dict)
+        model = create_instance(model_dict, self.MODEL_LOCATIONS)
         
         if model_path is not None:
             print(f"loading model from {model_path}")
@@ -89,25 +94,25 @@ class ParsingMixin(object):
 
     def build_train_loader(self):
         loader_kwargs = self.get('loader')
-        dataset = create_instance(loader_kwargs['dataset'])
+        dataset = create_instance(loader_kwargs['dataset'], self.DATASET_LOCATIONS)
         loader_kwargs['dataset'] = dataset
         return DataLoader(**loader_kwargs)
 
     # overwrite this function to define validation loader
     def build_val_loader(self):
         loader_kwargs = self.get('val_loader')
-        dataset = create_instance(loader_kwargs['dataset'])
+        dataset = create_instance(loader_kwargs['dataset'], self.DATASET_LOCATIONS)
         loader_kwargs['dataset'] = dataset
 
         return DataLoader(**loader_kwargs)
 
     def build_criterion(self):
-        return create_instance(self.get('criterion'))
+        return create_instance(self.get('criterion'), self.CRITERION_LOCATIONS)
 
     def build_metric(self):
         metric = self.get('metric')
         if metric is not None:
-            metric = create_instance(metric)
+            metric = create_instance(metric, self.METRIC_LOCATIONS)
         return metric
 
     @property
@@ -126,6 +131,8 @@ class ParsingMixin(object):
 
 
 class InfernoMixin(ParsingMixin):
+
+    TRANSFORM_LOCATIONS = []
 
     @property
     def tagscope(self):
@@ -322,7 +329,7 @@ class InfernoMixin(ParsingMixin):
                                       num_targets=self.num_targets)
 
     def create_transform(self, list_of_transforms):
-        return Compose(*[create_instance(t) for t in list_of_transforms])
+        return Compose(*[create_instance(t, self.TRANSFORM_LOCATIONS) for t in list_of_transforms])
 
     def train(self):
         return self.trainer.fit()
