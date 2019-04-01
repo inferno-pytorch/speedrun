@@ -267,8 +267,30 @@ class BaseExperiment(object):
         -------
             BaseExperiment
         """
-        with open(path, 'r') as f:
+        OVERRIDE_TAG = 'Override:'  # use as --update other_config/trainer/Override:criterion
+        assert '.yml' in path, f'Please specify a .yml file, got {path}'
+        split = path.split('.yml')
+        file_path = split[0] + '.yml'
+        with open(file_path, 'r') as f:
             update_config = yaml.load(f)
+
+        if split[1] is not '':
+            assert len(split) == 2, f'{split}'
+            path_in_yaml = split[1].lstrip('/')
+            keys = path_in_yaml.split('/')
+            override = keys[-1].startswith(OVERRIDE_TAG)
+            keys[-1] = keys[-1].lstrip(OVERRIDE_TAG)
+            for key in keys:
+                assert key in update_config, \
+                    f"Path '{path_in_yaml}' not present in '{file_path}' (key {key} not found)."
+                update_config = update_config[key]
+            if override:
+                # override the specified part of the config
+                self.set('/'.join(keys), update_config)
+                return
+            for key in reversed(keys):
+                update_config = {key: update_config}
+
         self._config = recursive_update(self._config, update_config)
         return self
 
