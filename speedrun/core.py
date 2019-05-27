@@ -6,8 +6,7 @@ import subprocess
 
 import yaml
 # This registers the constructors
-from . import yaml_utils
-from .py_utils import Namespace, MacroReader
+from .utils.py_utils import Namespace, MacroReader
 
 try:
     from torch import save

@@ -1,6 +1,13 @@
 from .core import BaseExperiment
-from .tensorboard import TensorboardMixin
+
+# Submodules
+from .logging import io_logging, tensorboard, plotting
+from .utils import py_utils, yaml_utils
+
+# Objects
 from .inferno import InfernoMixin
-from .io_logging import IOMixin
-from .plotting import MatplotlibMixin
 from .resource import WaiterMixin
+
+from .logging.tensorboard import TensorboardMixin
+from .logging.io_logging import IOMixin
+from .logging.plotting import MatplotlibMixin
