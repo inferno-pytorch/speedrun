@@ -19,7 +19,7 @@ class WaiterMixin(object):
     def wait_for_pid(self, pid, timeout=1):
         """Wait till the process with PID `pid` is dead."""
         while True:
-            if self.is_alive(pid):
+            if not self.is_alive(pid):
                 break
             else:
                 time.sleep(timeout)
@@ -27,10 +27,35 @@ class WaiterMixin(object):
 
     # noinspection PyUnresolvedReferences
     def wait(self):
-        """Wait for a process to finish before starting the current."""
-        pid_to_wait_for = self.get_arg('--wait.for', None)
-        timeout = self.get_arg('--wait.check_interval', 1)
-        verbose = self.get('--wait.verbose', False)
+        """
+        This function blocks until a specified process has terminated. This can be useful for
+        pipelining multiple experiments. You may call this function anytime after `auto_setup` is
+        called, e.g. in the `__init__` of your experiment or before the training training loop.
+
+        The commandline arguments this function listens to are:
+            `--wait.for`: specifies the PID of the process to wait for.
+            `--wait.check_interval`: Interval to query the status of the process being waited for.
+            `--wait.verbose`: Whether to print info.
+
+        Example
+        -------
+        This is assuming that your file calls this function somewhere.
+
+        $ python my_script.py TEST-0 --wait.for 1234 --wait.check_interval 10 --wait.verbose True
+
+        This will wait for the process with PID 1234. While doing so, it will check its status
+        every 10 seconds.
+
+        Warning
+        -------
+            May destroy friendships.
+        """
+
+        pid_to_wait_for = self.get_arg('wait.for', None)
+        timeout = self.get_arg('wait.check_interval', 1)
+        verbose = self.get_arg('wait.verbose', True)
+        if pid_to_wait_for is None:
+            return
         if verbose:
             message = f"Waiting for PID {pid_to_wait_for} to finish (my PID is {os.getpid()})..."
             (self.print if hasattr(self, 'print') else print)(message)
