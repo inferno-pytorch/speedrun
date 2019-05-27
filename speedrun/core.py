@@ -103,6 +103,10 @@ class BaseExperiment(object):
             return None
 
     @property
+    def checkpoint_path(self):
+        return os.path.join(self.checkpoint_directory, f'ckpt_iter_{self.step}.pt')
+
+    @property
     def plot_directory(self):
         """Directory where the plots go."""
         if self._experiment_directory is not None:
