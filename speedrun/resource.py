@@ -32,7 +32,7 @@ class WaiterMixin(object):
         timeout = self.get_arg('--wait.check_interval', 1)
         verbose = self.get('--wait.verbose', False)
         if verbose:
-            message = f"Waiting for PID {pid_to_wait_for}..."
+            message = f"Waiting for PID {pid_to_wait_for} to finish (my PID is {os.getpid()})..."
             (self.print if hasattr(self, 'print') else print)(message)
         self.wait_for_pid(pid_to_wait_for, timeout)
         if verbose:
