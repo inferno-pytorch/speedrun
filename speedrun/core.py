@@ -74,11 +74,13 @@ class BaseExperiment(object):
 
     @property
     def epoch(self):
+        """The current epoch."""
         if self._epoch is None:
             self._epoch = 0
         return self._epoch
 
     def next_epoch(self):
+        """Increments the epoch counter."""
         self._epoch = 0 if self._epoch is None else self._epoch
         self._epoch += 1
         return self
