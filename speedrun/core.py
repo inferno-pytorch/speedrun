@@ -47,6 +47,7 @@ class BaseExperiment(object):
         # Privates
         self._experiment_directory = None
         self._step = None
+        self._epoch = None
         self._config = {}
         self._meta_config = {'exclude_attrs_from_save': [],
                              'stateless_attributes': [],
@@ -69,6 +70,17 @@ class BaseExperiment(object):
         """Increments the global step counter."""
         self._step = 0 if self._step is None else self._step
         self._step += 1
+        return self
+
+    @property
+    def epoch(self):
+        if self._epoch is None:
+            self._epoch = 0
+        return self._epoch
+
+    def next_epoch(self):
+        self._epoch = 0 if self._epoch is None else self._epoch
+        self._epoch += 1
         return self
 
     @property
