@@ -94,3 +94,8 @@ class TensorboardMixin(object):
     def log_histograms_now(self):
         return self._log_x_now('histograms')
 
+    def dump_logs_to_json(self):
+        # noinspection PyUnresolvedReferences
+        json_path = os.path.join(self.log_directory, 'tensorboard.json')
+        self.logger.export_scalars_to_json(json_path)
+        return self
