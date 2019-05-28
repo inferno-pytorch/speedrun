@@ -534,7 +534,7 @@ class BaseExperiment(object):
         if not os.path.exists(path):
             raise FileNotFoundError
         with open(path, 'r') as f:
-            self._config = yaml.load(f)
+            self._config = yaml.load(f, Loader=yaml.FullLoader)
         return self
 
     def read_macro(self, path=None):
@@ -559,7 +559,7 @@ class BaseExperiment(object):
         if path is None:
             return
         with open(path, 'r') as f:
-            macro = yaml.load(f)
+            macro = yaml.load(f, Loader=yaml.FullLoader)
         # Update config with macro
         MacroReader.update_dict(self._config, macro, copy=False)
         # Done
