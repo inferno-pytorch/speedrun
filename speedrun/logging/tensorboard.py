@@ -1,3 +1,4 @@
+import os
 from contextlib import contextmanager
 try:
     import tensorboardX as tx
