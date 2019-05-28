@@ -592,17 +592,28 @@ class BaseExperiment(object):
         Calling `python experiment.py --dispatch train` from the command line
         will cause this method to call `my_experiment.train()`.
         """
-        if self.get_arg('dispatch', None) is None and self.DEFAULT_DISPATCH is None:
-            raise NotImplementedError
-        else:
-            # Get the method to be dispatched and call
-            return self.dispatch(self.get_arg('dispatch') or self.DEFAULT_DISPATCH,
-                                 *args, **kwargs)
+        try:
+            if self.get_arg('dispatch', None) is None and self.DEFAULT_DISPATCH is None:
+                raise NotImplementedError
+            else:
+                # Get the method to be dispatched and call
+                return self.dispatch(self.get_arg('dispatch') or self.DEFAULT_DISPATCH,
+                                     *args, **kwargs)
+        finally:
+            self.clean_up()
 
     def dispatch(self, key, *args, **kwargs):
         """Dispatches a method given its name as `key`."""
         assert hasattr(self, key), f"Trying to dispatch method {key}, but it doesn't exist."
         return getattr(self, key)(*args, **kwargs)
+
+    def clean_up(self):
+        """
+        Overridable method to clean up the mess before exiting the process. This method is
+        *guaranteed* to be called if `BaseExperiment.run` is used to dispatch (even if the dispatch
+        is not successful).
+        """
+        pass
 
     def update_git_revision(self, overwrite=False):
         """
