@@ -11,4 +11,4 @@ from .firelight import FirelightMixin
 
 from .logging.tensorboard import TensorboardMixin
 from .logging.io_logging import IOMixin
-from .logging.plotting import MatplotlibMixin
+
