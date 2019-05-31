@@ -14,7 +14,13 @@ except ImportError:
 
 class FirelightMixin(object):
 
-    def get_firelight_visualizer(self, file_name=None):
+    @property
+    def visualizer(self):
+        if not hasattr(self, '_visualizer'):
+            self._visualizer = self.load_visualizer()
+        return self._visualizer
+
+    def load_visualizer(self, file_name=None):
         if file_name is not None:
             config = file_name
         else:
@@ -23,8 +29,7 @@ class FirelightMixin(object):
         return visualizer
 
     def get_image_grid(self, states):
-        flv = self.get_firelight_visualizer()
-        image_grid = flv(**states)
+        image_grid = self.visualizer(**states)
         if isinstance(image_grid, torch.Tensor):
             image_grid.numpy()
         return image_grid
