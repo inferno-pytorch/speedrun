@@ -1,0 +1,21 @@
+_get_opts()
+{
+    COMPREPLY=()
+    # navigate to script location
+    cd "$(dirname "$0")"
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+    #cd "$parent_path"
+    # get options from script
+    local opts=$(python "${SPEEDRUN_LOCATION}/autocomplete/complete.py" "$(pwd)" "${COMP_WORDS[*]}" "$COMP_CWORD")
+    COMPREPLY=( $( compgen -o bashdefault -W "${opts}" ) )
+}
+
+# export speedrun location in environment variable
+export SPEEDRUN_LOCATION="$( cd "$(dirname "$0")/.." ; pwd -P )"
+[ -e "$BASH_SOURCE" ] && export SPEEDRUN_LOCATION="$( cd "$(dirname "$BASH_SOURCE")/.." ; pwd -P )"
+# zsh compatability
+if test -n "$ZSH_VERSION"; then
+  autoload -U +X bashcompinit && bashcompinit
+fi
+# register the completion script for python
+complete -o bashdefault -o default -o nospace -F _get_opts python
