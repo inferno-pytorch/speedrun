@@ -14,6 +14,8 @@ except ImportError:
 
 class FirelightMixin(object):
 
+    # TODO: add support for multiple visualizers (just as in get_inferno_callback in firelight)
+
     @property
     def visualizer(self):
         if not hasattr(self, '_visualizer'):
