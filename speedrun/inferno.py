@@ -89,6 +89,7 @@ class InfernoMixin(object):
             print("No metric specified")
 
     def inferno_build_optimizer(self):
+        print("Building optimizer")
         self._trainer.build_optimizer(self.get('trainer/optimizer'),
                                       **self.get('trainer/optimizer_kwargs'))
 

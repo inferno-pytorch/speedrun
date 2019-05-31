@@ -7,7 +7,8 @@ from .utils import py_utils, yaml_utils
 # Objects
 from .inferno import InfernoMixin
 from .resource import WaiterMixin
+from .firelight import FirelightMixin
 
 from .logging.tensorboard import TensorboardMixin
 from .logging.io_logging import IOMixin
-from .logging.plotting import MatplotlibMixin
+
