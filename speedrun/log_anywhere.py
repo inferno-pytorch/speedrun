@@ -25,15 +25,22 @@ def register_logger(logger, keys):
     _KEYS.append(keys)
 
 
-def _log_object(object_type, *args, **kwargs):
+ALLOW_NO_MATCH = True
+
+
+def _log_object(object_type, *args, allow_no_match=None, **kwargs):
+    allow_no_match = ALLOW_NO_MATCH if allow_no_match is None else allow_no_match
     log_func_name = 'log_' + object_type
+    logger_matched = False
     for logger, keys in zip(_LOGGERS, _KEYS):
         if keys not in (True, 'all'):
             use_current_logger = object_type in keys
         else:
             use_current_logger = hasattr(logger, log_func_name)
         if use_current_logger:
+            logger_matched = True
             logger.__getattribute__(log_func_name)(*args, **kwargs)
+    assert allow_no_match or logger_matched, f'No logger to log "{object_type}" registered.'
 
 
 def log_scalar(*args, **kwargs):
