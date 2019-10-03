@@ -78,9 +78,10 @@ class ParsingMixin(object):
         
         if model_path is not None:
             print(f"loading model from {model_path}")
-            state_dict = torch.load(model_path)["_model"].state_dict()
+            loaded_model = torch.load(model_path)
+            loaded_model = loaded_model if isinstance(loaded_model, torch.nn.Module) else loaded_model["_model"]
+            state_dict = loaded_model.state_dict()
             model.load_state_dict(state_dict)
-
         return model
 
     @property
@@ -282,7 +283,7 @@ class InfernoMixin(ParsingMixin):
         # build all callbacks from nested conf file
         if self.get('trainer/callbacks') is not None:
             for cb_class in self.get('trainer/callbacks'):
-                cb_class_module = locate(cb_class, inferno.trainers.callbacks)
+                cb_class_module = locate(cb_class, [inferno.trainers.callbacks])
                 for cb in self.get(f'trainer/callbacks/{cb_class}'):
                     print(f'creating trainer/callbacks/{cb_class}/{cb}')
                     args = self.get(f'trainer/callbacks/{cb_class}/{cb}')
@@ -297,8 +298,9 @@ class InfernoMixin(ParsingMixin):
                 raise ImportError("firelight could not be imported but is present in the config file")
             else:
                 # if requested, register anywhere logger for firelight
+                print(f"registering firelight for anywhere logging with keys "
+                      f"{self.get('firelight').get('log_anywhere', 'all')}")
                 register_logger(FirelightLogger(self.trainer), self.get('firelight').pop('log_anywhere', 'all'))
-
                 flc = firelight_visualizer(self.get('firelight'))
                 self._trainer.register_callback(flc)
 
