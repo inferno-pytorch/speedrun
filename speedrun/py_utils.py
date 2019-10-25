@@ -113,7 +113,7 @@ def create_instance(class_dict, import_from=None):
 
     # add extra import locations that might be specified in the class dict
     locations_from_class_dict = kwargs.pop('import_from', None)
-    import_from = import_from if locations_from_class_dict is None else [locations_from_class_dict, import_from]
+    import_from = import_from if locations_from_class_dict is None else [locations_from_class_dict]
 
     # get positional arguments if specified
     args = kwargs.pop('args', [])
