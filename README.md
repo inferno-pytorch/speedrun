@@ -2,7 +2,7 @@
 
 ## What? 
 
-A no-strings-attached toolkit to help you deploy and manage your machine learning experiments. The idea is to equip you with the tools you need to have well-documented and reproducible experiments going, but without _getting in your way_.  
+A no-strings-attached toolkit to help you deploy and manage your machine learning experiments. The idea is to equip you with the tools you need to have well-documented and reproducible experiments going, but without _getting in your way_. Think of it as a swiss army knife for dealing with the code-hell research projects typically tend to evolve to. 
 
 ### Installation
 On python 3.6+:
@@ -28,9 +28,18 @@ pip install dill
 
 ## How? 
 
-speedrun provides the base-class `BaseExperiment` for your experiments, in addition to a Tensorboard plug-in: `TensorboardMixin`. `BaseExperiment` contains handy tools for commandline argument & yaml configuration parsing and basic checkpointing, all of which you're free and welcome to override and adapt to your requirements. `TensorboardMixin` thinly wraps [tensorboardX](https://github.com/lanpa/tensorboard-pytorch) to get you god-tier logging right out of the box (but it's fully optional if you like your logging your way). 
+At the most basic level, speedrun provides the base-class `BaseExperiment` for your experiments to inherit from. This already enables you to read from configuration files and manages the experiment directories for you, so you have the choice of not worrying about file-paths and other nasty low-level details. 
 
-Here's how it's meant to work. 
+But in addition, there are numerous fully optional power-ups that you can bolt on to your experiment class to make it what you need. These are called `Mixin`s, and the growing catalogue includes: 
+
+- `TensorboardMixin` to get you god-tier logging right of the box (wraps [tensorboardX](https://github.com/lanpa/tensorboard-pytorch)). 
+- `IOMixin` to supply utilities for e.g. writing text or images to file, progress bars, etc.
+- `MatplotlibMixin` to convert matplotlib figures to images that you can then log to tensorboard with the `TensorboardMixin` or dump to file with the `IOMixin`. 
+- `FirelightMixin` to interact with [Firelight](https://github.com/inferno-pytorch/firelight), a tool for visualizing high-dimensional embeddings. 
+- `InfernoMixin` to interact with [Inferno](https://github.com/inferno-pytorch/inferno), a tool to abstract away the training loop for your pytorch models. 
+- `WaiterMixin` to have your code wait for a running process to finish (and release resources). 
+
+... and many more underway. Check out [speedrun-springboard](https://github.com/inferno-pytorch/speedrun-springboard) for a prefabricated experimental set-up, or the small pseudo-example below: 
 
 ```python
 from speedrun import BaseExperiment, TensorboardMixin
