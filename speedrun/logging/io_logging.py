@@ -31,7 +31,6 @@ class IOMixin(object):
     def printing_to_file_name(self):
         return getattr(self, '_print_filename', 'stdout')
 
-
     def print_to_file(self, yes=True, fname='stdout'):
         setattr(self, '_print_to_file', yes)
         setattr(self, '_print_filename', fname)
@@ -98,10 +97,27 @@ class IOMixin(object):
         # Done
         return self
 
-    @staticmethod
-    def progress(iterator, **tqdm_kwargs):
+    @property
+    def progress_bars(self):
+        # Make a dict of progress bars if not available
+        if not hasattr(self, '_progress_bars'):
+            setattr(self, '_progress_bars', {})
+        return getattr(self, '_progress_bars')
+
+    def progress(self, iterator, tag=None, **tqdm_kwargs):
         assert tqdm is not None, "tqdm is required for progress bars. Please `pip install tqdm`."
-        return tqdm.tqdm(iterator, **tqdm_kwargs)
+        progress_bar = tqdm.tqdm(iterator, **tqdm_kwargs)
+        if tag is not None:
+            self.progress_bars[tag] = progress_bar
+        return progress_bar
+
+    def log_progress(self, tag, **items):
+        progress_bar = self.progress_bars.get(tag)
+        if progress_bar is None:
+            pass
+        else:
+            progress_bar.set_postfix(**items)
+        return self
 
     # noinspection PyUnresolvedReferences
     def print(self, message, printer=None):
