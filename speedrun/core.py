@@ -593,8 +593,13 @@ class BaseExperiment(object):
         and it's defined in some `experiment.py` where `my_experiment.run()` is called.
         Calling `python experiment.py --dispatch train` from the command line
         will cause this method to call `my_experiment.train()`.
+
+        In addition, this function will also run any pre-dispatch hooks if registered
+        (via the `register_pre_dispatch_hook` decorator).
         """
         try:
+            # Run the pre-dispatch hooks and dispatch.
+            self.execute_pre_dispatch_hooks()
             return self.dispatch(self.get_dispatch_key(), *args, **kwargs)
         finally:
             self.clean_up()
@@ -611,7 +616,7 @@ class BaseExperiment(object):
         in that order.
         """
         # First look for commandline args
-        if self.get_arg('dispatch', None) is not None:
+        if self._argv is not None and self.get_arg('dispatch', None) is not None:
             return self.get_arg('dispatch', ensure_exists=True)
         elif self.find_default_dispatch() is not None:
             return self.find_default_dispatch()
@@ -625,13 +630,13 @@ class BaseExperiment(object):
             raise RuntimeError("No default dispatch could be found. Please set it first.")
 
     @staticmethod
-    def default_dispatch(fn):
+    def register_default_dispatch(fn):
         """
         Decorator to mark a method to be dispatched by default.
 
         Examples
         --------
-        >>> @BaseExperiment.default_dispatch
+        >>> @BaseExperiment.register_default_dispatch
         ... def my_default_method(self, *args):
         ...     return ...
         """
@@ -665,6 +670,21 @@ class BaseExperiment(object):
         for attry in dir(type(self)):
             if getattr(getattr(type(self), attry), '__is_speedrun_default_dispatch', False):
                 return attry
+
+    @staticmethod
+    def register_pre_dispatch_hook(fn):
+        """
+        Decorator to mark a method as a pre-dispatch hook. Pre-dispatch hooks are run before the
+        function being dispatched is called.
+        """
+        setattr(fn, '__is_speedrun_pre_dispatch_hook', True)
+        return fn
+
+    def execute_pre_dispatch_hooks(self):
+        """Execute the pre-dispatch hooks, if available. See also: `register_pre_dispatch_hook`."""
+        hook_names = [attry for attry in dir(type(self))
+                      if getattr(getattr(type(self), attry), '__is_speedrun_pre_dispatch_hook', False)]
+        return {hook_name: getattr(self, hook_name)() for hook_name in hook_names}
 
     def clean_up(self):
         """
@@ -762,4 +782,5 @@ class BaseExperiment(object):
         return self
 
 
-default_dispatch = BaseExperiment.default_dispatch
+register_default_dispatch = BaseExperiment.register_default_dispatch
+register_pre_dispatch_hook = BaseExperiment.register_pre_dispatch_hook

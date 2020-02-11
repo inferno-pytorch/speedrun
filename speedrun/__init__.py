@@ -1,4 +1,4 @@
-from .core import BaseExperiment, default_dispatch
+from .core import BaseExperiment, register_default_dispatch, register_pre_dispatch_hook
 
 # Submodules
 from .logging import io_logging, tensorboard, plotting, firelight
