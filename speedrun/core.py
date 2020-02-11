@@ -626,19 +626,42 @@ class BaseExperiment(object):
 
     @staticmethod
     def default_dispatch(fn):
+        """
+        Decorator to mark a method to be dispatched by default.
+
+        Examples
+        --------
+        >>> @BaseExperiment.default_dispatch
+        ... def my_default_method(self, *args):
+        ...     return ...
+        """
         setattr(fn, '__is_speedrun_default_dispatch', True)
         return fn
 
     def set_default_dispatch(self, method_name):
-        assert method_name in dir(self), f"Method name {method_name} not found in list of attributes."
-        assert callable(getattr(self, method_name)), f"Default dispatch method name {method_name} should be callable."
+        """
+        Set the default dispatch for _this_ instance.
+
+        Parameters
+        ----------
+        method_name : str
+            name of the function that will be dispatched by default.
+
+        Returns
+        -------
+            BaseExperiment
+        """
+        assert method_name in dir(type(self)), f"Method name {method_name} not found in list of attributes."
+        assert callable(getattr(type(self), method_name)), f"Default dispatch method name {method_name} should be callable."
         self._default_dispatch = method_name
         return self
 
     def get_default_dispatch(self):
+        """Get the name of the method used as the default dispatch."""
         return self._default_dispatch
 
     def find_default_dispatch(self):
+        """Find the name of the function marked as default dispatch."""
         for attry in dir(type(self)):
             if getattr(getattr(type(self), attry), '__is_speedrun_default_dispatch', False):
                 return attry
