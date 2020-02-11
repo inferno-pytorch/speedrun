@@ -12,3 +12,4 @@ from .logging.tensorboard import TensorboardMixin
 from .logging.io_logging import IOMixin
 from .logging.firelight import FirelightMixin
 
+from .sherpa.trial import SherpaTrialMixin
