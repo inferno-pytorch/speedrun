@@ -54,6 +54,7 @@ class BaseExperiment(object):
                              'stateful_attributes': []}
         self._cache = {}
         self._argv = None
+        self._default_dispatch = None
         # Publics
         self.experiment_directory = experiment_directory
         # Initialize mixin classes
@@ -210,6 +211,7 @@ class BaseExperiment(object):
         >>> assert isinstance(experiment.get_arg('blah'), int)  # type parsing with ast
         >>> experiment.get_arg(0)   # Prints './EXPERIMENT-0'
         """
+        assert self._argv is not None, "Args not parsed yet. Have you called `self.record_args()`?"
         if not isinstance(tag, str):
             assert isinstance(tag, int)
             if ensure_exists:
@@ -593,12 +595,7 @@ class BaseExperiment(object):
         will cause this method to call `my_experiment.train()`.
         """
         try:
-            if self.get_arg('dispatch', None) is None and self.DEFAULT_DISPATCH is None:
-                raise NotImplementedError
-            else:
-                # Get the method to be dispatched and call
-                return self.dispatch(self.get_arg('dispatch') or self.DEFAULT_DISPATCH,
-                                     *args, **kwargs)
+            return self.dispatch(self.get_dispatch_key(), *args, **kwargs)
         finally:
             self.clean_up()
 
@@ -606,6 +603,45 @@ class BaseExperiment(object):
         """Dispatches a method given its name as `key`."""
         assert hasattr(self, key), f"Trying to dispatch method {key}, but it doesn't exist."
         return getattr(self, key)(*args, **kwargs)
+
+    def get_dispatch_key(self):
+        """
+        Figures out what function to dispatch.
+        Looks for it in the commandline args, instance attribute, decorated functions and class attribute,
+        in that order.
+        """
+        # First look for commandline args
+        if self.get_arg('dispatch', None) is not None:
+            return self.get_arg('dispatch', ensure_exists=True)
+        elif self.find_default_dispatch() is not None:
+            return self.find_default_dispatch()
+        elif self._default_dispatch is not None:
+            # If that fails, check if the instance defines a default dispatch
+            return self._default_dispatch
+        elif self.DEFAULT_DISPATCH is not None:
+            # If even that fails, use the class defined default dispatch
+            return self.DEFAULT_DISPATCH
+        else:
+            raise RuntimeError("No default dispatch could be found. Please set it first.")
+
+    @staticmethod
+    def default_dispatch(fn):
+        setattr(fn, '__is_speedrun_default_dispatch', True)
+        return fn
+
+    def set_default_dispatch(self, method_name):
+        assert method_name in dir(self), f"Method name {method_name} not found in list of attributes."
+        assert callable(getattr(self, method_name)), f"Default dispatch method name {method_name} should be callable."
+        self._default_dispatch = method_name
+        return self
+
+    def get_default_dispatch(self):
+        return self._default_dispatch
+
+    def find_default_dispatch(self):
+        for attry in dir(type(self)):
+            if getattr(getattr(type(self), attry), '__is_speedrun_default_dispatch', False):
+                return attry
 
     def clean_up(self):
         """
@@ -703,4 +739,4 @@ class BaseExperiment(object):
         return self
 
 
-
+default_dispatch = BaseExperiment.default_dispatch
