@@ -1,11 +1,13 @@
-from ..core import register_pre_dispatch_hook
+import os
+
+from ...core import register_pre_dispatch_hook, BaseExperiment
 try:
     from sherpa import Client
 except ImportError:
     Client = None
 
 
-class SherpaTrialMixin(object):
+class SherpaTrialMixin(BaseExperiment):
     @property
     def sherpa_client(self):
         if not hasattr(self, '_sherpa_client'):
@@ -32,12 +34,20 @@ class SherpaTrialMixin(object):
                                         objective=objective, context=extra_metrics)
         return self
 
-    @register_pre_dispatch_hook
-    def update_configuration_with_sherpa_trial(self):
+    def parse_experiment_directory(self):
+        directory, directory_name = os.path.split(self.get_arg(1))
+        if directory_name == 'SPEEDRUN-SET-TRIAL-ID':
+            self.experiment_directory = os.path.join(directory, f'TRIAL-{self.sherpa_trial.id}')
+        else:
+            BaseExperiment.parse_experiment_directory(self)
+        return self
+
+    def update_configuration_from_args(self):
         if Client is None:
-            # No sherpa :-(
-            return
+            # No sherpa, fallback to the speedrun behaviour
+            return BaseExperiment.update_configuration_from_args(self)
+        # Pretend sherpa trial parameters are args
         for name, value in self.sherpa_trial.parameters.items():
             self.set(name, value)
-        self.dump_configuration()
+        return self
 

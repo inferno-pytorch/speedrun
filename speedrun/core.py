@@ -584,6 +584,16 @@ class BaseExperiment(object):
             shutil.rmtree(experiment_directory)
         return self
 
+    @staticmethod
+    def register_hook(fn, key):
+        setattr(fn, f'__is_speedrun_{key}_hook', True)
+        return fn
+
+    def execute_hooks(self, key):
+        hook_names = [attry for attry in dir(type(self))
+                      if getattr(getattr(type(self), attry), f'__is_speedrun_{key}_hook', False)]
+        return {hook_name: getattr(self, hook_name)() for hook_name in hook_names}
+
     def run(self, *args, **kwargs):
         """
         Run the experiment. If '--dispatch method' is given as a command line argument, it's
@@ -677,14 +687,11 @@ class BaseExperiment(object):
         Decorator to mark a method as a pre-dispatch hook. Pre-dispatch hooks are run before the
         function being dispatched is called.
         """
-        setattr(fn, '__is_speedrun_pre_dispatch_hook', True)
-        return fn
+        return BaseExperiment.register_hook(fn, 'pre_dispatch')
 
     def execute_pre_dispatch_hooks(self):
         """Execute the pre-dispatch hooks, if available. See also: `register_pre_dispatch_hook`."""
-        hook_names = [attry for attry in dir(type(self))
-                      if getattr(getattr(type(self), attry), '__is_speedrun_pre_dispatch_hook', False)]
-        return {hook_name: getattr(self, hook_name)() for hook_name in hook_names}
+        return self.execute_hooks('pre_dispatch')
 
     def clean_up(self):
         """
