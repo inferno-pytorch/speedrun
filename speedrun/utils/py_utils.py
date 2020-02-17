@@ -1,5 +1,5 @@
 from argparse import Namespace as _argparse__Namespace
-from collections import Mapping
+from collections import Mapping, MutableMapping
 from copy import deepcopy
 
 
@@ -68,3 +68,15 @@ class MacroReader(object):
                     config[macro_k] = deepcopy(macro_v)
                 else:
                     config[macro_k] = macro_v
+
+
+def flatten_dict(d, parent_key='', sep='_'):
+    # https://stackoverflow.com/a/6027615
+    items = []
+    for k, v in d.items():
+        new_key = parent_key + sep + k if parent_key else k
+        if isinstance(v, MutableMapping):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
