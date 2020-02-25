@@ -215,7 +215,8 @@ class BaseExperiment(object):
         if not isinstance(tag, str):
             assert isinstance(tag, int)
             if ensure_exists:
-                assert tag < len(self._argv)
+                assert tag < len(self._argv), \
+                    f"Accessing arg at index {tag}, but only {len(self._argv)} args available."
             return default if tag >= len(self._argv) else self._argv[tag]
         if f'--{tag}' in self._argv:
             value = self._argv[self._argv.index(f'--{tag}') + 1]
@@ -228,7 +229,7 @@ class BaseExperiment(object):
             return value
         else:
             if ensure_exists:
-                raise KeyError
+                raise KeyError(f"Argument --{tag} is not provided, but it should be.")
             return default
 
     def update_configuration_from_args(self):

@@ -45,3 +45,15 @@ yaml.add_constructor('!Sub', sub)
 yaml.add_constructor('!Div', div)
 yaml.add_constructor('!NumpyArray', numpy_array)
 yaml.add_constructor('!TorchTensor', torch_tensor)
+
+
+def dump_yaml(d, path):
+    with open(path, 'w+') as f:
+        yaml.dump(d, f)
+    return d
+
+
+def read_yaml(path):
+    with open(path, 'r') as f:
+        d = yaml.load(f, Loader=yaml.FullLoader)
+    return d
