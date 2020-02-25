@@ -219,13 +219,17 @@ class SweepRunner(BaseExperiment):
         self.read_sweep_info()
 
     def read_sweep_info(self):
-        parent_experiment_directory = self.get_arg('inherit', ensure_exists=True)
-        # Read stuff from parent experiment
-        sweep_info_file_path = os.path.join(parent_experiment_directory, 'Configurations', 'wandb_sweep_info.yml')
         if self.get_arg('wandb.sweep', False):
-            if not os.path.exists(sweep_info_file_path):
-                raise FileNotFoundError("Sweep info file not found!")
-            self._wandb_sweep_id = read_yaml(sweep_info_file_path)['wandb_sweep_id']
+            parent_experiment_directory = self.get_arg('inherit', ensure_exists=True)
+            # Read stuff from parent experiment
+            sweep_info_file_path = os.path.join(parent_experiment_directory, 'Configurations', 'wandb_sweep_info.yml')
+            # First try to get sweep_id from commandline args
+            if self.get_arg('wandb.sweep_id') is not None:
+                self._wandb_sweep_id = self.get_arg('wandb.sweep_id')
+            elif os.path.exists(sweep_info_file_path):
+                self._wandb_sweep_id = read_yaml(sweep_info_file_path)['wandb_sweep_id']
+            else:
+                raise RuntimeError("wandb sweep_id could not be found")
         return self
 
     def make_sweep_function(self, *run_args, **run_kwargs):
