@@ -240,5 +240,5 @@ class SweepRunner(BaseExperiment):
         if self._wandb_sweep_id is not None and self.get_arg('wandb.sweep', False):
             return wandb.agent(self._wandb_sweep_id, self.make_sweep_function(*args, **kwargs), count=1)
         else:
-            return self.make_sweep_function(*args, **kwargs)
+            return self.make_sweep_function(*args, **kwargs)()
 
