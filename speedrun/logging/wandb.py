@@ -1,7 +1,9 @@
 import os
+import shutil
 import yaml
-# from ..core import BaseExperiment
+from ..core import BaseExperiment
 from ..utils.py_utils import flatten_dict
+from ..utils.yaml_utils import read_yaml, dump_yaml
 from contextlib import contextmanager
 import numpy as np
 
@@ -36,6 +38,9 @@ class WandBMixin(object):
 
     def initialize_wandb(self, resume=False):
         assert wandb is not None, "Install wandb first!"
+        # If wandb is already initialized, ignore this call
+        if self.wandb_run is not None:
+            return self
         assert self.WANDB_PROJECT is not None, "Please set self.WANDB_PROJECT to use wandb."
         # If resuming, get the wandb id
         if resume:
@@ -143,3 +148,93 @@ class WandBMixin(object):
             return (self.step % frequency) == 0
         else:
             return False
+
+
+class WandBSweepMixin(WandBMixin):
+
+    @property
+    def wandb_sweep_id(self):
+        return getattr(self, '_wandb_sweep_id', None)
+
+    @wandb_sweep_id.setter
+    def wandb_sweep_id(self, value):
+        setattr(self, '_wandb_sweep_id', value)
+
+    def setup_wandb_sweep(self):
+        # Parse sweep config path and read in the config if possible.
+        sweep_config_path = self.get_arg('wandb.sweep_config', ensure_exists=True)
+        if not os.path.exists(sweep_config_path):
+            raise FileNotFoundError(f"The file {sweep_config_path} does not exist.")
+        sweep_config = read_yaml(sweep_config_path)
+        # Set sweep id, dump info to file and exit.
+        self.wandb_sweep_id = sweep_id = wandb.sweep(sweep_config, project=self.WANDB_PROJECT)
+        dump_yaml({'wandb_sweep_id': sweep_id}, os.path.join(self.configuration_directory, 'wandb_sweep_info.yml'))
+        dump_yaml(sweep_config, os.path.join(self.configuration_directory, 'wandb_sweep_config.yml'))
+        return sweep_id
+
+    def inherit_configuration(self, from_experiment_directory, file_name='train_config.yml', read=True):
+        if self.get_arg('wandb.sweep', False):
+            sweep_file_names = ['wandb_sweep_info.yml', 'wandb_sweep_config.yml']
+            for _sweep_file_name in sweep_file_names:
+                source_path = os.path.join(from_experiment_directory, 'Configurations', _sweep_file_name)
+                target_path = os.path.join(self.configuration_directory, _sweep_file_name)
+                if os.path.exists(source_path):
+                    shutil.copy(source_path, target_path)
+        return super(WandBSweepMixin, self).inherit_configuration(from_experiment_directory, file_name, read)
+
+    def read_config_file(self, file_name='train_config.yml', path=None):
+        if self.get_arg('wandb.sweep', False):
+            sweep_info_path = os.path.join(self.configuration_directory, 'wandb_sweep_info.yml')
+            if os.path.exists(sweep_info_path):
+                self.wandb_sweep_id = read_yaml(sweep_info_path)['wandb_sweep_id']
+        return super(WandBSweepMixin, self).read_config_file(file_name, path)
+
+    def update_configuration_from_wandb(self, dump_configuration=False):
+        if self.wandb_run is None:
+            self.initialize_wandb()
+        for key in self.wandb_run.config.keys():
+            value = self.wandb_run.config[key]
+            self.set(key.replace('__', '/'), value)
+        if dump_configuration:
+            self.dump_configuration()
+        return self
+
+    def auto_setup(self, update_git_revision=True, dump_configuration=True):
+        super_return = super(WandBSweepMixin, self).auto_setup()
+        if self.get_arg('wandb.sweep', False):
+            self.update_configuration_from_wandb(dump_configuration=True)
+        return super_return
+
+
+class SweepRunner(BaseExperiment):
+
+    def __init__(self, sweep_experiment_cls, *sweep_experiment_init_args, **sweep_experiment_init_kwargs):
+        super(SweepRunner, self).__init__()
+        self._wandb_sweep_id = None
+        self._sweep_experiment_cls = sweep_experiment_cls
+        self._sweep_experiment_init_args = sweep_experiment_init_args
+        self._sweep_experiment_init_kwargs = sweep_experiment_init_kwargs
+        # Setup
+        self.record_args()
+        self.read_sweep_info()
+
+    def read_sweep_info(self):
+        parent_experiment_directory = self.get_arg('inherit', ensure_exists=True)
+        # Read stuff from parent experiment
+        sweep_info_file_path = os.path.join(parent_experiment_directory, 'Configurations', 'wandb_sweep_info.yml')
+        if self.get_arg('wandb.sweep', False):
+            if not os.path.exists(sweep_info_file_path):
+                raise FileNotFoundError("Sweep info file not found!")
+            self._wandb_sweep_id = read_yaml(sweep_info_file_path)['wandb_sweep_id']
+        return self
+
+    def make_sweep_function(self, *run_args, **run_kwargs):
+        return lambda: self._sweep_experiment_cls(*self._sweep_experiment_init_args,
+                                                  **self._sweep_experiment_init_kwargs).run(*run_args, **run_kwargs)
+
+    def run(self, *args, **kwargs):
+        if self._wandb_sweep_id is not None and self.get_arg('wandb.sweep', False):
+            return wandb.agent(self._wandb_sweep_id, self.make_sweep_function(*args, **kwargs))
+        else:
+            return self.make_sweep_function(*args, **kwargs)
+
