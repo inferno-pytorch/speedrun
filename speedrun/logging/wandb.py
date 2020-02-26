@@ -1,11 +1,15 @@
 import os
 import shutil
+import glob
+from contextlib import contextmanager
+import re
+
 import yaml
+import numpy as np
+
 from ..core import BaseExperiment
 from ..utils.py_utils import flatten_dict
 from ..utils.yaml_utils import read_yaml, dump_yaml
-from contextlib import contextmanager
-import numpy as np
 
 try:
     import wandb
@@ -198,6 +202,35 @@ class WandBSweepMixin(WandBMixin):
         if dump_configuration:
             self.dump_configuration()
         return self
+
+    def parse_experiment_directory(self):
+        if self.get_arg('wandb.sweep', False):
+            # Check if we're dealing with a template
+            template = self.get_arg(1)
+            if template is None:
+                raise RuntimeError("Can't find experiment directory in command line args.")
+            glob_template = template.format(WANDB_RUN_NUM='*')
+            if glob_template == template:
+                # No template found, pretend this didn't happen
+                return super(WandBSweepMixin, self).parse_experiment_directory()
+            template_matches = glob.glob(glob_template)
+            # If no match is found, we let the super-class deal with it.
+            if len(template_matches) == 0:
+                run_number = 0
+                self.experiment_directory = template.format(WANDB_RUN_NUM=run_number)
+                return self
+            else:
+                # Matches found, let's extract the numbers
+                regex_matches = [re.match(template.format(WANDB_RUN_NUM='(.*)'), template_match)
+                                 for template_match in template_matches]
+                run_numbers = [int(match.group(1))
+                               for match in regex_matches if (match.lastindex == 1 and match.group(1).isdigit())]
+                run_number = 0 if (len(run_numbers) == 0) else (max(run_numbers) + 1)
+                # Make experiment directory
+                self.experiment_directory = template.format(WANDB_RUN_NUM=run_number)
+                return self
+        else:
+            return super(WandBSweepMixin, self).parse_experiment_directory()
 
     def auto_setup(self, update_git_revision=True, dump_configuration=True):
         super_return = super(WandBSweepMixin, self).auto_setup()
