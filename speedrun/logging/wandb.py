@@ -247,6 +247,8 @@ class SweepRunner(BaseExperiment):
         self._sweep_experiment_cls = sweep_experiment_cls
         self._sweep_experiment_init_args = sweep_experiment_init_args
         self._sweep_experiment_init_kwargs = sweep_experiment_init_kwargs
+        self._sweep_experiment_run_args = ()
+        self._sweep_experiment_run_kwargs = {}
         # Setup
         self.record_args()
         self.read_sweep_info()
@@ -269,9 +271,15 @@ class SweepRunner(BaseExperiment):
         return lambda: self._sweep_experiment_cls(*self._sweep_experiment_init_args,
                                                   **self._sweep_experiment_init_kwargs).run(*run_args, **run_kwargs)
 
+    def run_sweep_experiment(self):
+        experiment = self._sweep_experiment_cls(*self._sweep_experiment_init_args, **self._sweep_experiment_init_kwargs)
+        return experiment.run(*self._sweep_experiment_run_args, **self._sweep_experiment_run_kwargs)
+
     def run(self, *args, **kwargs):
+        self._sweep_experiment_run_args = args
+        self._sweep_experiment_run_kwargs = kwargs
         if self._wandb_sweep_id is not None and self.get_arg('wandb.sweep', False):
-            return wandb.agent(self._wandb_sweep_id, self.make_sweep_function(*args, **kwargs), count=1)
+            return wandb.agent(self._wandb_sweep_id, self.run_sweep_experiment, count=1)
         else:
-            return self.make_sweep_function(*args, **kwargs)()
+            return self.run_sweep_experiment()
 
