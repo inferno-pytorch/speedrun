@@ -109,20 +109,20 @@ class PostDevelopCommand(develop):
     """Post-installation for development mode."""
     def run(self):
         develop.run(self)
-        setup_shell_inits(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'speedrun'))
+        # setup_shell_inits(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'speedrun'))
 
 
 class PostInstallCommand(install):
     """Post-installation for installation mode."""
     def run(self):
         install.run(self)
-        setup_shell_inits(os.path.join(binaries_directory(), 'speedrun'))
+        # setup_shell_inits(os.path.join(binaries_directory(), 'speedrun'))
 
 
 setuptools.setup(
     name="speedrun",
-    author="Nasim Rahaman",
-    author_email="nasim.rahaman@iwr.uni-heidelberg.de",
+    author="speedrun Developers",
+    author_email="nasim.rahaman@tuebingen.mpg.de",
     license='GPL-v3',
     description="Toolkit for machine learning experiment management.",
     version="0.1",
