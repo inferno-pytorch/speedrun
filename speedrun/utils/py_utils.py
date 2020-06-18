@@ -53,6 +53,30 @@ class MacroReader(object):
         return cmd.split(';')
 
     @classmethod
+    def remove_wake_keys(cls, d):
+        if isinstance(d, Mapping):
+            for key, value in d.items():
+                if key == cls.WAKE_KEY:
+                    del d[key]
+                elif isinstance(value, (Mapping, list)):
+                    cls.remove_wake_keys(value)
+        elif isinstance(d, list):
+            things_to_remove = []
+            for elem in d:
+                if isinstance(elem, Mapping):
+                    if cls.WAKE_KEY in elem and len(elem) == 1:
+                        # The dict exists for the sole purpose of telling
+                        # speedrun to do something, so we clean it out
+                        things_to_remove.append(elem)
+                    else:
+                        # The dict contains other things, so we let the
+                        # recursion deal with it.
+                        cls.remove_wake_keys(elem)
+            for thing in things_to_remove:
+                d.remove(thing)
+        return d
+
+    @classmethod
     def update_dict(cls, config, macro, copy=True):
         for macro_k, macro_v in macro.items():
             config_v = config.get(macro_k)
@@ -74,9 +98,9 @@ class MacroReader(object):
                 config[macro_k] = list(config_v) + list(macro_v)
             else:
                 if copy:
-                    config[macro_k] = deepcopy(macro_v)
+                    config[macro_k] = cls.remove_wake_keys(deepcopy(macro_v))
                 else:
-                    config[macro_k] = macro_v
+                    config[macro_k] = cls.remove_wake_keys(macro_v)
 
 
 def flatten_dict(d, parent_key='', sep='_'):
