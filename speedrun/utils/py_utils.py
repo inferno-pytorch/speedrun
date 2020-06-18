@@ -46,6 +46,7 @@ class MacroReader(object):
     WAKE_KEY = '__speedrun__'
     # Commands
     COMMAND_PURGE = 'purge'
+    COMMAND_APPEND = 'append'
 
     @classmethod
     def parse_command(cls, cmd):
@@ -55,14 +56,22 @@ class MacroReader(object):
     def update_dict(cls, config, macro, copy=True):
         for macro_k, macro_v in macro.items():
             config_v = config.get(macro_k)
-            # Check if we're purging existing content
+            # Check if we're purging/appending to existing content
             if isinstance(macro_v, Mapping) and cls.WAKE_KEY in macro_v:
                 macro_command = macro_v.pop(cls.WAKE_KEY)
-                purge_now = 'purge' in cls.parse_command(macro_command)
+                purge_now = cls.COMMAND_PURGE in cls.parse_command(macro_command)
             else:
                 purge_now = False
+            if isinstance(macro_v, list):
+                append_now = {cls.WAKE_KEY: cls.COMMAND_APPEND} in macro_v
+                if append_now:
+                    macro_v.remove({cls.WAKE_KEY: cls.COMMAND_APPEND})
+            else:
+                append_now = False
             if isinstance(macro_v, Mapping) and isinstance(config_v, Mapping) and not purge_now:
-                cls.update_dict(config_v, macro_v)
+                cls.update_dict(config_v, macro_v, copy=copy)
+            elif isinstance(macro_v, list) and isinstance(config_v, list) and append_now:
+                config[macro_k] = list(config_v) + list(macro_v)
             else:
                 if copy:
                     config[macro_k] = deepcopy(macro_v)
