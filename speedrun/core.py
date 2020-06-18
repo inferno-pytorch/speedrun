@@ -553,6 +553,12 @@ class BaseExperiment(object):
             Path to the macro file. If None, it's read from the command line arg '--macro'.
             If that doesn't work, this function does nothing.
 
+        Notes
+        -----
+        The `path` argument can either be a single path or a list of paths delimited by a semicolon.
+        In other words, the following would work:
+            $ python experiment.py ... --macro path/to/macro1.yml;path/to/macro2.yml
+
         Returns
         -------
             BaseExperiment
@@ -561,10 +567,11 @@ class BaseExperiment(object):
             path = self.get_arg('macro')
         if path is None:
             return
-        with open(path, 'r') as f:
-            macro = yaml.load(f, Loader=yaml.FullLoader)
-        # Update config with macro
-        MacroReader.update_dict(self._config, macro, copy=False)
+        for _path in path.split(";"):
+            with open(_path, 'r') as f:
+                macro = yaml.load(f, Loader=yaml.FullLoader)
+            # Update config with macro
+            MacroReader.update_dict(self._config, macro, copy=False)
         # Done
         return self
 
