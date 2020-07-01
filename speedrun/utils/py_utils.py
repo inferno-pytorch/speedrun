@@ -83,7 +83,8 @@ class MacroReader(object):
             # Check if we're purging/appending to existing content
             if isinstance(macro_v, Mapping) and cls.WAKE_KEY in macro_v:
                 macro_command = macro_v.pop(cls.WAKE_KEY)
-                purge_now = cls.COMMAND_PURGE in cls.parse_command(macro_command)
+                purge_now = (cls.COMMAND_PURGE in cls.parse_command(macro_command) or
+                             f"__{cls.COMMAND_PURGE}__" in cls.parse_command(macro_command))
             else:
                 purge_now = False
             if isinstance(macro_v, list):
