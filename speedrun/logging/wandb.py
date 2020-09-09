@@ -275,11 +275,17 @@ class SweepRunner(BaseExperiment):
         experiment = self._sweep_experiment_cls(*self._sweep_experiment_init_args, **self._sweep_experiment_init_kwargs)
         return experiment.run(*self._sweep_experiment_run_args, **self._sweep_experiment_run_kwargs)
 
+    @property
+    def wandb_project(self):
+        return getattr(self._sweep_experiment_cls, "WANDB_PROJECT", None)
+
     def run(self, *args, **kwargs):
         self._sweep_experiment_run_args = args
         self._sweep_experiment_run_kwargs = kwargs
         if self._wandb_sweep_id is not None and self.get_arg('wandb.sweep', False):
-            return wandb.agent(self._wandb_sweep_id, self.run_sweep_experiment, count=1)
+            return wandb.agent(self._wandb_sweep_id, self.run_sweep_experiment,
+                               project=self.wandb_project,
+                               count=1)
         else:
             return self.run_sweep_experiment()
 
