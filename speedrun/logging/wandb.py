@@ -20,6 +20,7 @@ except ImportError:
 class WandBMixin(object):
     WANDB_JOB_TYPE = 'train'
     WANDB_PROJECT = None
+    WANDB_ENTITY = None
 
     @property
     def wandb_directory(self):
@@ -53,7 +54,8 @@ class WandBMixin(object):
         else:
             run_id = None
         run = wandb.init(job_type=self.WANDB_JOB_TYPE, dir=self.wandb_directory, resume=resume,
-                         project=self.WANDB_PROJECT, config=self.wandb_config, id=run_id)
+                         project=self.WANDB_PROJECT, config=self.wandb_config, id=run_id,
+                         entity=self.WANDB_ENTITY)
         self.wandb_run = run
         # Dump all wandb info to file
         self.dump_wandb_info()
@@ -279,12 +281,16 @@ class SweepRunner(BaseExperiment):
     def wandb_project(self):
         return getattr(self._sweep_experiment_cls, "WANDB_PROJECT", None)
 
+    @property
+    def wandb_entity(self):
+        return getattr(self._sweep_experiment_cls, "WANDB_ENTITY", None)
+
     def run(self, *args, **kwargs):
         self._sweep_experiment_run_args = args
         self._sweep_experiment_run_kwargs = kwargs
         if self._wandb_sweep_id is not None and self.get_arg('wandb.sweep', False):
             return wandb.agent(self._wandb_sweep_id, self.run_sweep_experiment,
-                               project=self.wandb_project,
+                               project=self.wandb_project, entity=self.wandb_entity,
                                count=1)
         else:
             return self.run_sweep_experiment()
