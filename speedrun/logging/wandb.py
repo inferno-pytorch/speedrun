@@ -173,7 +173,7 @@ class WandBSweepMixin(WandBMixin):
             raise FileNotFoundError(f"The file {sweep_config_path} does not exist.")
         sweep_config = read_yaml(sweep_config_path)
         # Set sweep id, dump info to file and exit.
-        self.wandb_sweep_id = sweep_id = wandb.sweep(sweep_config, project=self.WANDB_PROJECT)
+        self.wandb_sweep_id = sweep_id = wandb.sweep(sweep_config, project=self.WANDB_PROJECT, entity=self.WANDB_ENTITY)
         dump_yaml({'wandb_sweep_id': sweep_id}, os.path.join(self.configuration_directory, 'wandb_sweep_info.yml'))
         dump_yaml(sweep_config, os.path.join(self.configuration_directory, 'wandb_sweep_config.yml'))
         return sweep_id
