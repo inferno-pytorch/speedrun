@@ -35,7 +35,10 @@ def query_yes_no(question, default="yes"):
 
     while True:
         sys.stdout.write(question + prompt)
-        choice = input().lower()
+        try:
+            choice = input().lower()
+        except EOFError:
+            choice = ''
         if default is not None and choice == '':
             return valid[default]
         elif choice in valid:
@@ -121,9 +124,9 @@ class PostInstallCommand(install):
 
 setuptools.setup(
     name="speedrun",
-    author="Nasim Rahaman",
-    author_email="nasim.rahaman@iwr.uni-heidelberg.de",
-    license='GPL-v3',
+    author="speedrun Developers",
+    author_email="nasim.rahaman@tuebingen.mpg.de",
+    license='Apache v2',
     description="Toolkit for machine learning experiment management.",
     version="0.1",
     install_requires=['pyyaml>=3.12'],

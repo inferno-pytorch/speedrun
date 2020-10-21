@@ -20,10 +20,12 @@ python setup.py install
 Optionally, 
 
 ```bash
-# Install tensorboardX
+# Install tensorboard
 pip install tensorboardX
 # Install dill
 pip install dill
+# Install Weights and Biases
+pip install wandb
 ```
 
 ## How? 
@@ -32,14 +34,16 @@ At the most basic level, speedrun provides the base-class `BaseExperiment` for y
 
 But in addition, there are numerous fully optional power-ups that you can bolt on to your experiment class to make it what you need. These are called `Mixin`s, and the growing catalogue includes: 
 
-- `TensorboardMixin` to get you god-tier logging right of the box (wraps [tensorboardX](https://github.com/lanpa/tensorboard-pytorch)). 
+- `WandBMixin` for out-of-the-box logging to [Weights and Biases](https://www.wandb.com/).
+- `TensorboardMixin` to log runs locally to a tensorboard log-file (wraps [tensorboardX](https://github.com/lanpa/tensorboard-pytorch)). 
+- `WandBSweepMixin` and `SweepRunner` to configure and launch hyper-parameter sweeps with [Weights and Biases Sweeps](https://docs.wandb.com/sweeps). 
 - `IOMixin` to supply utilities for e.g. writing text or images to file, progress bars, etc.
 - `MatplotlibMixin` to convert matplotlib figures to images that you can then log to tensorboard with the `TensorboardMixin` or dump to file with the `IOMixin`. 
 - `FirelightMixin` to interact with [Firelight](https://github.com/inferno-pytorch/firelight), a tool for visualizing high-dimensional embeddings. 
 - `InfernoMixin` to interact with [Inferno](https://github.com/inferno-pytorch/inferno), a tool to abstract away the training loop for your pytorch models. 
 - `WaiterMixin` to have your code wait for a running process to finish (and release resources). 
 
-... and many more underway. Check out [speedrun-springboard](https://github.com/inferno-pytorch/speedrun-springboard) for a prefabricated experimental set-up, or the small pseudo-example below: 
+... and more underway. Check out [speedrun-springboard](https://github.com/inferno-pytorch/speedrun-springboard) for a prefabricated experimental set-up, or the small pseudo-example below: 
 
 ```python
 from speedrun import BaseExperiment, TensorboardMixin
@@ -97,30 +101,54 @@ if __name__=='__main__':
     MyFirstExperimet().run()
 ```
 
-Now, run the file: 
+Now, there are a few simple steps before we can run the first experiment of the project. The subsequent experiments are a breeze! 
 
+First, we make a directory to store the _experiment templates_ (you can call the directory anything you like).
+```bash
+mkdir templates
+```
+Next, let's make the first experiment template. You can call the template anything you like, but we'll call it `BASIC-X`. 
+```bash
+mkdir -p templates/BASIC-X/Configurations
+nano templates/BASIC-X/Configurations/train_config.yml
+```
+
+Now, we paste in the following configuration in `train_config.yml`. Note that the `.../Configurations/train_config.yml` structure is required for speedrun to find it. 
+
+```yml
+my_cool_module:
+  kwargs: 
+    a: 1
+    b: 2
+another_module:
+  kwargs: 
+    c: 3
+    d: 4
+training: 
+  num_iterations: 100000
+  checkpoint_every: 10000
+tensorboard: 
+  log_images_every: 100
+  log_scalars_every: 10
+```
+
+Finally, we make a directory for our actual experiments (not the templates) to live in. You can call it anything you like, but we'll call it `experiments`: 
 ```bash
 mkdir experiments
-python my_experiment.py experiments/BASIC-0 \
-> --config.my_cool_module.kwargs "{'a': 1, 'b': 2}" \
-> --config.another_module.kwargs "{'c': 3, 'd': 4}" \
-> --config.training.num_iterations 100000 \
-> --config.training.checkpoint_every 10000 \
-> --config.tensorboard.log_images_every 100 \
-> --config.tensorboard.log_scalars_every 10
 ```
 
-This will create a directory `experiments/BASIC-0` with multiple subdirectories. The configuration will be dumped in `experiments/BASIC-0/Configurations`, the tensorboard logs in `experiments/BASIC-0/Logs` and the checkpoints in `experiments/BASIC-0/Weights`. Of course, a fully valid option would be to create `BASIC-0/Configurations/train_config.yml` manually (you'll usually only need to do this once!) and populate it with an editor. 
-
-Now say you want to try another set of kwargs for your cool module. All you need to do is: 
+That's it, we're all set! To launch our first experiment, which we call `BASIC-0`, we could do:  
 ```bash
-python my_experiment.py experiments/BASIC-1 --inherit experiments/BASIC-0 --config.my_cool_module.kwargs "{'a': 42, 'b': 84}"
+python my_experiment.py experiments/BASIC-0 --inherit templates/BASIC-X
+```
+This will create a directory `experiments/BASIC-0` with multiple subdirectories. The configuration will be dumped in `experiments/BASIC-0/Configurations`, the tensorboard logs in `experiments/BASIC-0/Logs` and the checkpoints in `experiments/BASIC-0/Weights`. 
+
+So you fire up your first experiments but you think the keyword argument `a` of `my_cool_module` should instead be `42` and `d` of `another_module` should be `21`. All you need to do is: 
+```bash
+python my_experiment.py experiments/BASIC-1 --inherit experiments/BASIC-0 --config.my_cool_module.kwargs.a 42 --config.another_module.kwargs.d 21
 ```
 
-This will _inherit_ the configuration from `BASIC-0`, but override the kwargs of your cool module. The resulting configuration will be dumped in `experiments/BASIC-1/Configurations/train_config.yml` for future experiments to inherit from. 
-
-To know the exact difference between the two experiments, you can always: 
-
+This will _inherit_ the configuration from `BASIC-0`, but override `a` in kwargs of `my_cool_module` and `d` in kwargs of `another_module`. The resulting configuration will be dumped in `experiments/BASIC-1/Configurations/train_config.yml` for future experiments to inherit from! This way, you can iterate over your experiments and be confident that every run is self-contained and reproducible. To know the exact difference between the two experiments, you can always: 
 ```bash
 diff experiments/BASIC-0/Configurations/train_config.yml experiments/BASIC-1/Configurations/train_config.yml
 ```

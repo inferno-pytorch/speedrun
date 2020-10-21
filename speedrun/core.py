@@ -54,6 +54,7 @@ class BaseExperiment(object):
                              'stateful_attributes': []}
         self._cache = {}
         self._argv = None
+        self._default_dispatch = None
         # Publics
         self.experiment_directory = experiment_directory
         # Initialize mixin classes
@@ -210,10 +211,12 @@ class BaseExperiment(object):
         >>> assert isinstance(experiment.get_arg('blah'), int)  # type parsing with ast
         >>> experiment.get_arg(0)   # Prints './EXPERIMENT-0'
         """
+        assert self._argv is not None, "Args not parsed yet. Have you called `self.record_args()`?"
         if not isinstance(tag, str):
             assert isinstance(tag, int)
             if ensure_exists:
-                assert tag < len(self._argv)
+                assert tag < len(self._argv), \
+                    f"Accessing arg at index {tag}, but only {len(self._argv)} args available."
             return default if tag >= len(self._argv) else self._argv[tag]
         if f'--{tag}' in self._argv:
             value = self._argv[self._argv.index(f'--{tag}') + 1]
@@ -226,7 +229,7 @@ class BaseExperiment(object):
             return value
         else:
             if ensure_exists:
-                raise KeyError
+                raise KeyError(f"Argument --{tag} is not provided, but it should be.")
             return default
 
     def update_configuration_from_args(self):
@@ -550,6 +553,12 @@ class BaseExperiment(object):
             Path to the macro file. If None, it's read from the command line arg '--macro'.
             If that doesn't work, this function does nothing.
 
+        Notes
+        -----
+        The `path` argument can either be a single path or a list of paths delimited by a colon.
+        In other words, the following would work:
+            $ python experiment.py ... --macro path/to/macro1.yml:path/to/macro2.yml
+
         Returns
         -------
             BaseExperiment
@@ -558,10 +567,11 @@ class BaseExperiment(object):
             path = self.get_arg('macro')
         if path is None:
             return
-        with open(path, 'r') as f:
-            macro = yaml.load(f, Loader=yaml.FullLoader)
-        # Update config with macro
-        MacroReader.update_dict(self._config, macro, copy=False)
+        for _path in path.split(":"):
+            with open(_path, 'r') as f:
+                macro = yaml.load(f, Loader=yaml.FullLoader)
+            # Update config with macro
+            MacroReader.update_dict(self._config, macro, copy=False)
         # Done
         return self
 
@@ -582,6 +592,16 @@ class BaseExperiment(object):
             shutil.rmtree(experiment_directory)
         return self
 
+    @staticmethod
+    def register_hook(fn, key):
+        setattr(fn, f'__is_speedrun_{key}_hook', True)
+        return fn
+
+    def execute_hooks(self, key):
+        hook_names = [attry for attry in dir(type(self))
+                      if getattr(getattr(type(self), attry), f'__is_speedrun_{key}_hook', False)]
+        return {hook_name: getattr(self, hook_name)() for hook_name in hook_names}
+
     def run(self, *args, **kwargs):
         """
         Run the experiment. If '--dispatch method' is given as a command line argument, it's
@@ -591,14 +611,14 @@ class BaseExperiment(object):
         and it's defined in some `experiment.py` where `my_experiment.run()` is called.
         Calling `python experiment.py --dispatch train` from the command line
         will cause this method to call `my_experiment.train()`.
+
+        In addition, this function will also run any pre-dispatch hooks if registered
+        (via the `register_pre_dispatch_hook` decorator).
         """
         try:
-            if self.get_arg('dispatch', None) is None and self.DEFAULT_DISPATCH is None:
-                raise NotImplementedError
-            else:
-                # Get the method to be dispatched and call
-                return self.dispatch(self.get_arg('dispatch') or self.DEFAULT_DISPATCH,
-                                     *args, **kwargs)
+            # Run the pre-dispatch hooks and dispatch.
+            self.execute_pre_dispatch_hooks()
+            return self.dispatch(self.get_dispatch_key(), *args, **kwargs)
         finally:
             self.clean_up()
 
@@ -606,6 +626,80 @@ class BaseExperiment(object):
         """Dispatches a method given its name as `key`."""
         assert hasattr(self, key), f"Trying to dispatch method {key}, but it doesn't exist."
         return getattr(self, key)(*args, **kwargs)
+
+    def get_dispatch_key(self):
+        """
+        Figures out what function to dispatch.
+        Looks for it in the commandline args, instance attribute, decorated functions and class attribute,
+        in that order.
+        """
+        # First look for commandline args
+        if self._argv is not None and self.get_arg('dispatch', None) is not None:
+            return self.get_arg('dispatch', ensure_exists=True)
+        elif self.find_default_dispatch() is not None:
+            return self.find_default_dispatch()
+        elif self._default_dispatch is not None:
+            # If that fails, check if the instance defines a default dispatch
+            return self._default_dispatch
+        elif self.DEFAULT_DISPATCH is not None:
+            # If even that fails, use the class defined default dispatch
+            return self.DEFAULT_DISPATCH
+        else:
+            raise RuntimeError("No default dispatch could be found. Please set it first.")
+
+    @staticmethod
+    def register_default_dispatch(fn):
+        """
+        Decorator to mark a method to be dispatched by default.
+
+        Examples
+        --------
+        >>> @BaseExperiment.register_default_dispatch
+        ... def my_default_method(self, *args):
+        ...     return ...
+        """
+        setattr(fn, '__is_speedrun_default_dispatch', True)
+        return fn
+
+    def set_default_dispatch(self, method_name):
+        """
+        Set the default dispatch for _this_ instance.
+
+        Parameters
+        ----------
+        method_name : str
+            name of the function that will be dispatched by default.
+
+        Returns
+        -------
+            BaseExperiment
+        """
+        assert method_name in dir(type(self)), f"Method name {method_name} not found in list of attributes."
+        assert callable(getattr(type(self), method_name)), f"Default dispatch method name {method_name} should be callable."
+        self._default_dispatch = method_name
+        return self
+
+    def get_default_dispatch(self):
+        """Get the name of the method used as the default dispatch."""
+        return self._default_dispatch
+
+    def find_default_dispatch(self):
+        """Find the name of the function marked as default dispatch."""
+        for attry in dir(type(self)):
+            if getattr(getattr(type(self), attry), '__is_speedrun_default_dispatch', False):
+                return attry
+
+    @staticmethod
+    def register_pre_dispatch_hook(fn):
+        """
+        Decorator to mark a method as a pre-dispatch hook. Pre-dispatch hooks are run before the
+        function being dispatched is called.
+        """
+        return BaseExperiment.register_hook(fn, 'pre_dispatch')
+
+    def execute_pre_dispatch_hooks(self):
+        """Execute the pre-dispatch hooks, if available. See also: `register_pre_dispatch_hook`."""
+        return self.execute_hooks('pre_dispatch')
 
     def clean_up(self):
         """
@@ -703,4 +797,5 @@ class BaseExperiment(object):
         return self
 
 
-
+register_default_dispatch = BaseExperiment.register_default_dispatch
+register_pre_dispatch_hook = BaseExperiment.register_pre_dispatch_hook

@@ -1,4 +1,4 @@
-from .core import BaseExperiment
+from .core import BaseExperiment, register_default_dispatch, register_pre_dispatch_hook
 
 # Submodules
 from .logging import io_logging, tensorboard, plotting, firelight
@@ -11,4 +11,4 @@ from .resource import WaiterMixin
 from .logging.tensorboard import TensorboardMixin
 from .logging.io_logging import IOMixin
 from .logging.firelight import FirelightMixin
-
+from .logging.wandb import WandBMixin, WandBSweepMixin, SweepRunner
