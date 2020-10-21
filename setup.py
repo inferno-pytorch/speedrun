@@ -126,7 +126,7 @@ setuptools.setup(
     name="speedrun",
     author="speedrun Developers",
     author_email="nasim.rahaman@tuebingen.mpg.de",
-    license='GPL-v3',
+    license='Apache v2',
     description="Toolkit for machine learning experiment management.",
     version="0.1",
     install_requires=['pyyaml>=3.12'],

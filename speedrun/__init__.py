@@ -11,5 +11,4 @@ from .resource import WaiterMixin
 from .logging.tensorboard import TensorboardMixin
 from .logging.io_logging import IOMixin
 from .logging.firelight import FirelightMixin
-
-from speedrun.hyperparameters.sherpa.trial import SherpaTrialMixin
+from .logging.wandb import WandBMixin, WandBSweepMixin, SweepRunner

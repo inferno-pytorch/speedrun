@@ -1,1 +1,0 @@
-from .trial import SherpaTrialMixin
