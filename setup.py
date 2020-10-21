@@ -112,14 +112,14 @@ class PostDevelopCommand(develop):
     """Post-installation for development mode."""
     def run(self):
         develop.run(self)
-        # setup_shell_inits(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'speedrun'))
+        setup_shell_inits(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'speedrun'))
 
 
 class PostInstallCommand(install):
     """Post-installation for installation mode."""
     def run(self):
         install.run(self)
-        # setup_shell_inits(os.path.join(binaries_directory(), 'speedrun'))
+        setup_shell_inits(os.path.join(binaries_directory(), 'speedrun'))
 
 
 setuptools.setup(
