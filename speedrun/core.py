@@ -555,9 +555,9 @@ class BaseExperiment(object):
 
         Notes
         -----
-        The `path` argument can either be a single path or a list of paths delimited by a semicolon.
+        The `path` argument can either be a single path or a list of paths delimited by a colon.
         In other words, the following would work:
-            $ python experiment.py ... --macro path/to/macro1.yml;path/to/macro2.yml
+            $ python experiment.py ... --macro path/to/macro1.yml:path/to/macro2.yml
 
         Returns
         -------
@@ -567,7 +567,7 @@ class BaseExperiment(object):
             path = self.get_arg('macro')
         if path is None:
             return
-        for _path in path.split(";"):
+        for _path in path.split(":"):
             with open(_path, 'r') as f:
                 macro = yaml.load(f, Loader=yaml.FullLoader)
             # Update config with macro
