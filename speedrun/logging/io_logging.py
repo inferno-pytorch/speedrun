@@ -21,6 +21,8 @@ try:
 except ImportError:
     tqdm = None
 
+from ..utils.yaml_utils import dump_yaml
+
 
 class IOMixin(object):
     @property
@@ -132,4 +134,15 @@ class IOMixin(object):
             stdout_filename = path.join(self.log_directory, self.printing_to_file_name)
             with open(stdout_filename, 'a') as stdout_file:
                 print(message, end='\n', file=stdout_file)
+        return self
+
+    @property
+    def yaml_dump_directory(self):
+        yaml_dump_directory = path.join(self.log_directory, "YAMLDumps")
+        if not os.path.exists(yaml_dump_directory):
+            os.makedirs(yaml_dump_directory, exist_ok=True)
+        return yaml_dump_directory
+
+    def dump_yaml(self, tag, payload):
+        dump_yaml(payload, path=os.path.join(self.yaml_dump_directory, f"{tag}.yml"))
         return self
