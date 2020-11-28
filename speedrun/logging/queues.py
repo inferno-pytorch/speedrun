@@ -92,10 +92,12 @@ class QueueMixin(object):
         default: Any = None,
         block: bool = False,
         timeout: int = None,
+        **queue_constructor_kwargs,
     ):
         if name not in self.queues:
-            return default
-        queue = self.queues[name]
+            queue = self.initialize_queue(name=name, **queue_constructor_kwargs)
+        else:
+            queue = self.queues[name]
         try:
             item = queue.get(block=block, timeout=timeout)
         except persistqueue.exceptions.Empty:
