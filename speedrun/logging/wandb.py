@@ -148,6 +148,10 @@ class WandBMixin(object):
         return graph
 
     @property
+    def wandb(self):
+        return wandb
+
+    @property
     def log_wandb_now(self):
         frequency = self.get('wandb/log_every', None)
         if frequency is not None:
