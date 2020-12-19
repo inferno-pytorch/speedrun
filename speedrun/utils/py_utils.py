@@ -127,3 +127,7 @@ def unflatten_dict(d, sep="/"):
             d = d[part]
         d[parts[-1]] = value
     return result
+
+
+class Unset(object):
+    pass

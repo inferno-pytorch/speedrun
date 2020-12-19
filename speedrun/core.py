@@ -6,7 +6,7 @@ import subprocess
 
 import yaml
 # This registers the constructors
-from .utils.py_utils import Namespace, MacroReader
+from .utils.py_utils import Namespace, MacroReader, Unset
 
 try:
     from torch import save
@@ -235,6 +235,7 @@ class BaseExperiment(object):
     def update_configuration_from_args(self):
         """
         Override fields in the configuration file with command line arguments.
+        Can be also used to unset a field in the configuration.
 
         Examples
         --------
@@ -251,6 +252,16 @@ class BaseExperiment(object):
         >>> print(experiment.get('training/lr'))            # This would print 0.0001
         >>> assert isinstance(experiment.get('training/lr'), float) # Works
 
+        To unset a field in the configuration, use the following syntax (in the terminal):
+
+        $ python my_experiment.py ./EXPERIMENT-0 --inherit ./OLD-EXPERIMENT-0
+            --config.training.optimizer SGD
+            --config.training.optimizer.kwargs.betas speedrun:unset
+
+        This can be useful if the field `training/optimizer/kwargs/betas` was defined
+        by the (base) experiment `OLD-EXPERIMENT-0` but is no longer needed by the newer
+        experiment `EXPERIMENT-0`.
+
         Returns
         -------
             BaseExperiment
@@ -260,7 +271,10 @@ class BaseExperiment(object):
             if arg.startswith('--config.'):
                 tag = arg.replace('--config.', '').replace('.', '/')
                 value = self.get_arg(arg.lstrip('--'), ensure_exists=True)
-                self.set(tag, value)
+                if value == "speedrun:unset":
+                    self.unset(tag)
+                else:
+                    self.set(tag, value)
         return self
 
     def register_unpickleable(self, *attributes):
@@ -378,7 +392,7 @@ class BaseExperiment(object):
 
     def set(self, tag, value):
         """
-        Like get, but sets.
+        Like get, but sets. Can also be used to unset, see usage of `value` below.
 
         Examples
         --------
@@ -390,8 +404,9 @@ class BaseExperiment(object):
         ----------
         tag : str
             Path in the hierarchical configuration.
-        value :
-            Value to set.
+        value : Any or Unset
+            Value to set. If set to an instance of Unset, the tag will be
+            removed from configuration.
 
         Returns
         -------
@@ -405,7 +420,39 @@ class BaseExperiment(object):
             else:
                 data.update({path: {}})
                 data = data[path]
-        data[paths[-1]] = value
+        if isinstance(value, Unset):
+            # This is a signal to remove the element
+            try:
+                del data[paths[-1]]
+            except KeyError:
+                # The key is not in data, so nothing to unset.
+                pass
+        else:
+            data[paths[-1]] = value
+        return self
+
+    def unset(self, tag):
+        """
+        Unset the field in the (hierarchical) configuration.
+
+        Examples
+        --------
+        >>> experiment = BaseExperiment()
+        >>> experiment.set("a/b", 42)
+        >>> print(experiment.get("a/b"))    # Prints 42
+        >>> experiment.unset("a/b")
+        >>> print(experiment.get("a/b"))    # Prints nothing (None)
+
+        Parameters
+        ----------
+        tag : str
+            Path in the hierarchical configuration to unset.
+
+        Returns
+        -------
+            BaseExperiment
+        """
+        self.set(tag, Unset())
         return self
 
     @property
