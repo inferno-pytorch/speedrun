@@ -8,7 +8,7 @@ import yaml
 import numpy as np
 
 from ..core import BaseExperiment
-from ..utils.py_utils import flatten_dict
+from ..utils.py_utils import flatten_dict, unflatten_dict
 from ..utils.yaml_utils import read_yaml, dump_yaml
 
 try:
@@ -159,6 +159,40 @@ class WandBMixin(object):
         else:
             return False
 
+    def update_configuration_from_existing_wandb_run(self, run_id=None, dump_configuration=False):
+        if run_id is None:
+            # Read from command line
+            run_id = self.get_arg("wandb.inherit")
+        if run_id is None:
+            # Nothing to update here
+            return self
+        # Fire up the API and download the config
+        api = wandb.Api()
+        run = api.run(f"{self.WANDB_ENTITY}/{self.WANDB_PROJECT}/{run_id}")
+        run_config = run.config
+        for key, value in run_config.items():
+            self.set(key.replace("__", "/"), value)
+        if dump_configuration:
+            self.dump_configuration()
+        return self
+
+    def inherit_configuration(self, from_experiment_directory, file_name='train_config.yml',
+                              read=True):
+        if not from_experiment_directory.startswith("wandb:"):
+            return super(WandBMixin, self).inherit_configuration(from_experiment_directory,
+                                                                 file_name=file_name, read=read)
+        # Parse the run ID and Fire up the API
+        run_id = from_experiment_directory.replace("wandb:", "")
+        api = wandb.Api()
+        run = api.run(f"{self.WANDB_ENTITY}/{self.WANDB_PROJECT}/{run_id}")
+        run_config = unflatten_dict(run.config, sep="__")
+        # This is where the config from wandb will be dumped
+        target_path = os.path.join(self.configuration_directory, file_name)
+        dump_yaml(run_config, target_path)
+        if read:
+            self.read_config_file()
+        return self
+
 
 class WandBSweepMixin(WandBMixin):
 
@@ -298,4 +332,3 @@ class SweepRunner(BaseExperiment):
                                count=1)
         else:
             return self.run_sweep_experiment()
-

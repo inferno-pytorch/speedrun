@@ -114,3 +114,16 @@ def flatten_dict(d, parent_key='', sep='_'):
         else:
             items.append((new_key, v))
     return dict(items)
+
+
+def unflatten_dict(d, sep="/"):
+    result = dict()
+    for key, value in d.items():
+        parts = key.split(sep)
+        d = result
+        for part in parts[:-1]:
+            if part not in d:
+                d[part] = dict()
+            d = d[part]
+        d[parts[-1]] = value
+    return result
