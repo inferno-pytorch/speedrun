@@ -55,7 +55,7 @@ class WandBMixin(object):
             run_id = None
         run = wandb.init(job_type=self.WANDB_JOB_TYPE, dir=self.wandb_directory, resume=resume,
                          project=self.WANDB_PROJECT, config=self.wandb_config, id=run_id,
-                         entity=self.WANDB_ENTITY)
+                         entity=self.WANDB_ENTITY, notes=self.get_arg("wandb.notes", None))
         self.wandb_run = run
         # Dump all wandb info to file
         self.dump_wandb_info()
@@ -273,7 +273,8 @@ class WandBSweepMixin(WandBMixin):
             return super(WandBSweepMixin, self).parse_experiment_directory()
 
     def auto_setup(self, update_git_revision=True, dump_configuration=True):
-        super_return = super(WandBSweepMixin, self).auto_setup()
+        super_return = super(WandBSweepMixin, self).auto_setup(update_git_revision=update_git_revision,
+                                                               dump_configuration=dump_configuration)
         if self.get_arg('wandb.sweep', False):
             self.update_configuration_from_wandb(dump_configuration=True)
         return super_return
