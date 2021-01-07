@@ -84,7 +84,11 @@ class WandBMixin(object):
         return run_id
 
     def dump_wandb_info(self):
-        info = {key: os.environ[key] for key in os.environ if key.startswith('WANDB_')}
+        # This info is available even if the env variables are not set
+        info = {'WANDB_PROJECT': self.WANDB_PROJECT,
+                'WANDB_ENTITY': self.WANDB_ENTITY,
+                'WANDB_RUN_ID': self.wandb_run_id}
+        info.update({key: os.environ[key] for key in os.environ if key.startswith('WANDB_')})
         with open(os.path.join(self.log_directory, 'wandb_info.yml'), 'w') as f:
             yaml.dump(info, f)
         return self
