@@ -63,7 +63,11 @@ class WandBMixin(object):
 
     @property
     def wandb_run_id(self):
-        return wandb.env.get_run()
+        wandb_run = self.wandb_run
+        if wandb_run is not None:
+            return self.wandb_run.id
+        else:
+            return None
 
     def find_existing_wandb_run_id(self):
         run_id = None
