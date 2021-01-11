@@ -6,6 +6,8 @@ _KEY_MAPPING = {
     'scalars': 'scalar',
     'image': 'image',
     'images': 'image',
+    'figure': 'figure',
+    'figures': 'figure',
     'embedding': 'embedding',
     'embeddings': 'embedding',
     'text': 'text',
@@ -49,6 +51,10 @@ def log_scalar(*args, **kwargs):
 
 def log_image(*args, **kwargs):
     _log_object('image', *args, **kwargs)
+
+
+def log_figure(*args, **kwargs):
+    _log_object('figure', *args, **kwargs)
 
 
 def log_embedding(*args, **kwargs):

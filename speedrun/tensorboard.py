@@ -54,6 +54,13 @@ class TensorboardMixin(object):
         self.logger.add_image(tag=self.get_full_tag(tag), img_tensor=value,
                               global_step=step)
         return self
+    
+    def log_figure(self, tag, figure, step=None):
+        # noinspection PyUnresolvedReferences
+        step = self.step if step is None else step
+        self.logger.add_figure(tag=self.get_full_tag(tag), figure=figure,
+                              global_step=step)
+        return self
 
     def log_embedding(self, tag, tensor, images=None, metadata=None, step=None):
         # noinspection PyUnresolvedReferences
@@ -91,6 +98,10 @@ class TensorboardMixin(object):
     @property
     def log_images_now(self):
         return self._log_x_now('images')
+
+    @property
+    def log_figures_now(self):
+        return self._log_x_now('figures')
 
     @property
     def log_embeddings_now(self):
