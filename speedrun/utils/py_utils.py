@@ -1,6 +1,9 @@
 from argparse import Namespace as _argparse__Namespace
 from collections import Mapping, MutableMapping
 from copy import deepcopy
+import os
+import time
+import random
 
 
 class Namespace(_argparse__Namespace):
@@ -131,3 +134,16 @@ def unflatten_dict(d, sep="/"):
 
 class Unset(object):
     pass
+
+
+def makedirs(path, exist_ok=True, retry=True):
+    try:
+        os.makedirs(path, exist_ok=exist_ok)
+    except FileNotFoundError:
+        # This can happen when a lot of makedirs are being called simultaneously,
+        # apparently (maybe a race condition).
+        if not retry:
+            raise
+        else:
+            time.sleep(random.random())
+            makedirs(path, exist_ok=exist_ok, retry=False)

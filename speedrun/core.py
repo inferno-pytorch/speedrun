@@ -6,7 +6,7 @@ import subprocess
 
 import yaml
 # This registers the constructors
-from .utils.py_utils import Namespace, MacroReader, Unset
+from .utils.py_utils import Namespace, MacroReader, Unset, makedirs
 
 try:
     from torch import save
@@ -95,10 +95,10 @@ class BaseExperiment(object):
     def experiment_directory(self, value):
         if value is not None:
             # Make directories
-            os.makedirs(os.path.join(value, 'Configurations'), exist_ok=True)
-            os.makedirs(os.path.join(value, 'Logs'), exist_ok=True)
-            os.makedirs(os.path.join(value, 'Weights'), exist_ok=True)
-            os.makedirs(os.path.join(value, 'Plots'), exist_ok=True)
+            makedirs(os.path.join(value, 'Configurations'), exist_ok=True)
+            makedirs(os.path.join(value, 'Logs'), exist_ok=True)
+            makedirs(os.path.join(value, 'Weights'), exist_ok=True)
+            makedirs(os.path.join(value, 'Plots'), exist_ok=True)
             self._experiment_directory = value
 
     @property

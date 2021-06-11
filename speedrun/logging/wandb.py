@@ -8,7 +8,7 @@ import yaml
 import numpy as np
 
 from ..core import BaseExperiment
-from ..utils.py_utils import flatten_dict, unflatten_dict
+from ..utils.py_utils import flatten_dict, unflatten_dict, makedirs
 from ..utils.yaml_utils import read_yaml, dump_yaml
 
 try:
@@ -26,7 +26,7 @@ class WandBMixin(object):
     def wandb_directory(self):
         directory = os.path.join(self.experiment_directory, 'WandB')
         if not os.path.exists(directory):
-            os.makedirs(directory, exist_ok=True)
+            makedirs(directory, exist_ok=True)
         return directory
 
     @property
