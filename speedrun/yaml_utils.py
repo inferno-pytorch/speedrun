@@ -1,7 +1,7 @@
 import yaml
 from yaml.loader import Loader
 import operator
-from functools import reduce
+from functools import reduce, partial
 from copy import deepcopy
 from .py_utils import create_instance
 
@@ -56,6 +56,9 @@ yaml.add_constructor('!TorchTensor', torch_tensor)
 yaml.add_constructor('!Hyperopt', hyperopt)
 
 
+object_tags = ['!Obj:', '!Tune:']
+
+
 class OverrideDict(dict):
     """class to allow overriding of whole dictionaries in recursive_update"""
     def after_override(self):
@@ -83,13 +86,6 @@ def key_delete_constructor(loader, node):
 
 
 yaml.add_constructor('!Del', key_delete_constructor)
-
-
-def override_constructor(loader, node):
-    if isinstance(node, yaml.MappingNode):
-        return OverrideDict(loader.construct_mapping(node))
-    else:
-        raise NotImplementedError('Node: ' + str(type(node)))
 
 
 def _recursive_update_inplace(d1, d2):
@@ -124,52 +120,57 @@ def recursive_update(d1, d2):
 
 
 class TempArgObj:
-    def __init__(self, value, tag, style):
+    def __init__(self, value, tag_prefix, tag, style):
         self.value = value
+        self.tag_prefix = tag_prefix
         self.tag = tag
         self.style = style
 
     @staticmethod
     def to_yaml(dumper, data):
-        return dumper.represent_scalar(f'!Obj:{data.tag}', data.value, style=data.style)
+        return dumper.represent_scalar(f'{data.tag_prefix}{data.tag}', data.value, style=data.style)
 
 
 class TempArgsObj(list):
-    def __init__(self, value, tag, flow_style):
+    def __init__(self, value, tag_prefix, tag, flow_style):
         super(TempArgsObj, self).__init__(value)
+        self.tag_prefix = tag_prefix
         self.tag = tag
         self.flow_style = flow_style
 
     @staticmethod
     def to_yaml(dumper, data):
-        return dumper.represent_sequence(f'!Obj:{data.tag}', data, flow_style=data.flow_style)
+        return dumper.represent_sequence(f'{data.tag_prefix}{data.tag}', data, flow_style=data.flow_style)
 
 
 class TempKwargsObj(dict):
-    def __init__(self, mapping, tag, flow_style):
+    def __init__(self, mapping, tag_prefix, tag, flow_style):
         super(TempKwargsObj, self).__init__(mapping)
         # save tag (which is the class to be constructed) in the dict to allow updating
+        self['__tag_prefix__'] = tag_prefix
         self['__tag__'] = tag
         self.flow_style = flow_style
 
     @staticmethod
     def to_yaml(dumper, data):
         tag = data.pop('__tag__')
-        return dumper.represent_mapping(f'!Obj:{tag}', data, flow_style=data.flow_style)
+        tag_prefix = data.pop('__tag_prefix__')
+        return dumper.represent_mapping(f'{tag_prefix}{tag}', data, flow_style=data.flow_style)
 
 
-def temp_obj_constructor(loader, tag_suffix, node):
+def temp_obj_constructor(loader, tag_suffix, node, tag_prefix='!Obj'):
     if isinstance(node, yaml.ScalarNode):
-        return TempArgObj(loader.construct_scalar(node), tag_suffix, style=node.style)
+        return TempArgObj(loader.construct_scalar(node), tag_prefix, tag_suffix, style=node.style)
     elif isinstance(node, yaml.SequenceNode):
-        return TempArgsObj(loader.construct_sequence(node), tag_suffix, flow_style=node.flow_style)
+        return TempArgsObj(loader.construct_sequence(node), tag_prefix, tag_suffix, flow_style=node.flow_style)
     elif isinstance(node, yaml.MappingNode):
-        return TempKwargsObj(loader.construct_mapping(node), tag_suffix, flow_style=node.flow_style)
+        return TempKwargsObj(loader.construct_mapping(node), tag_prefix, tag_suffix, flow_style=node.flow_style)
     else:
         raise NotImplementedError('Node: ' + str(type(node)))
 
 
-yaml.add_multi_constructor('!Obj:', temp_obj_constructor)
+for tag_prefix in object_tags:
+    yaml.add_multi_constructor(tag_prefix, partial(temp_obj_constructor, tag_prefix=tag_prefix))
 yaml.add_representer(TempArgObj, TempArgObj.to_yaml)
 yaml.add_representer(TempArgsObj, TempArgsObj.to_yaml)
 yaml.add_representer(TempKwargsObj, TempKwargsObj.to_yaml)
@@ -178,16 +179,16 @@ yaml.add_representer(TempKwargsObj, TempKwargsObj.to_yaml)
 class TempKwargsOverrideObj(TempKwargsObj, OverrideDict):
     def after_override(self):
         tag = self.pop('__tag__')
-        return TempKwargsObj(mapping=dict(self), tag=tag, flow_style=self.flow_style)
+        return TempKwargsObj(mapping=dict(self), tag_prefix='!Obj:', tag=tag, flow_style=self.flow_style)
 
 
-def temp_override_obj_constructor(loader, tag_suffix, node):
+def temp_override_obj_constructor(loader, tag_suffix, node, tag_prefix='!Obj'):
     if isinstance(node, yaml.ScalarNode):
-        return TempArgObj(loader.construct_scalar(node), tag_suffix, style=node.style)
+        return TempArgObj(loader.construct_scalar(node), tag_prefix, tag_suffix, style=node.style)
     elif isinstance(node, yaml.SequenceNode):
-        return TempArgsObj(loader.construct_sequence(node), tag_suffix, flow_style=node.flow_style)
+        return TempArgsObj(loader.construct_sequence(node), tag_prefix, tag_suffix, flow_style=node.flow_style)
     elif isinstance(node, yaml.MappingNode):
-        return TempKwargsOverrideObj(loader.construct_mapping(node), tag_suffix, flow_style=node.flow_style)
+        return TempKwargsOverrideObj(loader.construct_mapping(node), tag_prefix, tag_suffix, flow_style=node.flow_style)
     else:
         raise NotImplementedError('Node: ' + str(type(node)))
 
@@ -195,11 +196,10 @@ def temp_override_obj_constructor(loader, tag_suffix, node):
 yaml.add_multi_constructor('!OverrideObj:', temp_override_obj_constructor)
 
 
-class ObjectLoader(Loader):
+class TuneLoader(Loader):
     """
-    Loader for python object construction
-    Examples:
-
+    Identical to regular Loader (that does not contruct objects) except in that it constructs Objects marked with the
+    "!Tune" tag instead of "!Obj".
     """
     def construct_instance(self, suffix, node):
         if isinstance(node, yaml.MappingNode):  # keyword arguments specified
@@ -211,6 +211,19 @@ class ObjectLoader(Loader):
         else:
             raise NotImplementedError
         return create_instance({suffix: class_dict})
+
+
+# add the python object constructor to the loader
+TuneLoader.add_multi_constructor('!Tune:', TuneLoader.construct_instance)
+
+
+class ObjectLoader(TuneLoader):
+    """
+    Loader for python object construction
+    Examples:
+
+    """
+    pass
 
 
 # add the python object constructor to the loader

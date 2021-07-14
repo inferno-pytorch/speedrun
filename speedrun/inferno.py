@@ -231,7 +231,8 @@ class InfernoMixin(ParsingMixin):
             # pop argument specifying anywhere logging for TensorboardMixin # TODO: how to put this in TensorboardMixin?
             log_anywhere_keys = tb_args.pop('log_anywhere', None)
 
-            tb_args['log_directory'] = f"{self.experiment_directory}/Logs"
+            if 'log_directory' not in tb_args:
+                tb_args['log_directory'] = f"{self.experiment_directory}/Logs"
             print("logging to ", tb_args['log_directory'])
             tb_logger = TensorboardLogger(**tb_args)
 

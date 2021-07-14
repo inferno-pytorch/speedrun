@@ -549,7 +549,7 @@ class BaseExperiment(object):
         """Pack kwargs to a Namespace object."""
         return Namespace(**kwargs)
 
-    def read_config_file(self, file_name='train_config.yml', path=None, load_undumpable=False):
+    def read_config_file(self, file_name='train_config.yml', path=None, loader=None):
         """
         Read configuration from a YAML file.
 
@@ -568,7 +568,7 @@ class BaseExperiment(object):
         if not os.path.exists(path):
             raise FileNotFoundError
         with open(path, 'r') as f:
-            loader = ObjectLoader if load_undumpable else yaml.Loader
+            loader = yaml.Loader if loader is None else loader
             self._config = yaml.load(f, loader)
         return self
 
@@ -709,6 +709,6 @@ class BaseExperiment(object):
         if construct_objects:
             # Reload configuration, parsing generally not dumpable python objects (marked by !Obj, see yaml_utils.py).
             assert dump_configuration, f'can only construct objects if allowed to dump first'
-            self.read_config_file(load_undumpable=True)
+            self.read_config_file(loader=ObjectLoader)
         # Done
         return self
