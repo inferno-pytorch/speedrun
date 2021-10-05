@@ -132,6 +132,15 @@ def unflatten_dict(d, sep="/"):
     return result
 
 
+def recursive_update(d1, d2):
+    for key, val in d2.items():
+        if isinstance(val, Mapping):
+            d1[key] = recursive_update(d1.get(key, {}), val)
+        else:
+            d1[key] = val
+    return d1
+
+
 class Unset(object):
     pass
 
