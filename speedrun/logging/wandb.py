@@ -201,6 +201,23 @@ class WandBMixin(object):
             self.read_config_file()
         return self
 
+    def _log_x_now(self, x):
+        # noinspection PyUnresolvedReferences
+        frequency = self.get(f"wandb/log_{x}_every", None)
+        if frequency is not None:
+            # noinspection PyUnresolvedReferences
+            return (self.step % frequency) == 0
+        else:
+            return False
+
+    @property
+    def log_scalars_now(self):
+        return self._log_x_now("scalars")
+
+    @property
+    def log_images_now(self):
+        return self._log_x_now("images")
+
 
 class WandBSweepMixin(WandBMixin):
 
