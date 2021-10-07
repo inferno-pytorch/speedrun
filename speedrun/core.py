@@ -102,6 +102,32 @@ class BaseExperiment(object):
             self._experiment_directory = value
 
     @property
+    def experiment_name(self):
+        """
+        Returns the base-name of the experiment directory.
+
+        If the experiment directory is "/path/to/MY-EXPERIMENT", this function
+        returns "MY-EXPERIMENT".
+        """
+        if self._experiment_directory is not None:
+            return os.path.basename(self._experiment_directory)
+        else:
+            return None
+
+    @property
+    def experiment_base_directory(self):
+        """
+        Returns the name of the directory where this experiment is stored.
+
+        If the experiment directory is "/path/to/MY-EXPERIMENT", this function
+        returns "/path/to".
+        """
+        if self._experiment_directory is not None:
+            return os.path.split(self._experiment_directory)[0]
+        else:
+            return None
+
+    @property
     def log_directory(self):
         """Directory where the log files go."""
         if self._experiment_directory is not None:
