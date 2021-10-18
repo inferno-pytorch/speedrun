@@ -30,6 +30,14 @@ class WandBMixin(object):
         return directory
 
     @property
+    def wandb_run_name(self):
+        return self.wandb_config.get("_wandb_run_name", None)
+
+    @property
+    def wandb_group(self):
+        return self.wandb_config.get("_wandb_group", None)
+
+    @property
     def wandb_run(self):
         return getattr(self, '_wandb_run', None)
 
@@ -55,7 +63,8 @@ class WandBMixin(object):
             run_id = None
         run = wandb.init(job_type=self.WANDB_JOB_TYPE, dir=self.wandb_directory, resume=resume,
                          project=self.WANDB_PROJECT, config=self.wandb_config, id=run_id,
-                         entity=self.WANDB_ENTITY, notes=self.get_arg("wandb.notes", None))
+                         entity=self.WANDB_ENTITY, group=self.wandb_group, name=self.wandb_run_name,
+                         notes=self.get_arg("wandb.notes", None))
         self.wandb_run = run
         # Dump all wandb info to file
         self.dump_wandb_info()
