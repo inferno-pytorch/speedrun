@@ -822,7 +822,7 @@ class BaseExperiment(object):
             self.set("git_rev", gitrev)
         return self
 
-    def auto_setup(self, update_git_revision=True, dump_configuration=True):
+    def auto_setup(self, update_git_revision=True, dump_configuration=True, read_config_file=True):
         """
         Set things up automagically.
 
@@ -832,6 +832,8 @@ class BaseExperiment(object):
             Whether to update current configuration with the git revision hash.
         dump_configuration : bool
             Whether to update the configuration in file.
+        read_config_file : bool
+            Whether this method should try to read an existing config file.
 
         Examples
         --------
@@ -866,11 +868,12 @@ class BaseExperiment(object):
         if inherit_from is not None:
             # Inherit configuration file
             self.inherit_configuration(inherit_from, read=False)
-        try:
-            self.read_config_file()
-        except FileNotFoundError:
-            # No config file found, experiment._config remains an empty dict.
-            pass
+        if read_config_file:
+            try:
+                self.read_config_file()
+            except FileNotFoundError:
+                # No config file found, experiment._config remains an empty dict.
+                pass
         # Read macro if available
         self.read_macro()
         # Update config from commandline args
