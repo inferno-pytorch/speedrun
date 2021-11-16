@@ -3,6 +3,7 @@ import shutil
 import sys
 import ast
 import subprocess
+import re
 
 import yaml
 # This registers the constructors
@@ -590,6 +591,20 @@ class BaseExperiment(object):
     def bundle(self, **kwargs):
         """Pack kwargs to a Namespace object."""
         return Namespace(**kwargs)
+    
+    def get_loader(self):
+        loader = yaml.FullLoader
+        loader.add_implicit_resolver(
+            u'tag:yaml.org,2002:float',
+            re.compile(u'''^(?:
+            [-+]?(?:[0-9][0-9_]*)\.[0-9_]*(?:[eE][-+]?[0-9]+)?
+            |[-+]?(?:[0-9][0-9_]*)(?:[eE][-+]?[0-9]+)
+            |\.[0-9_]+(?:[eE][-+][0-9]+)?
+            |[-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+\.[0-9_]*
+            |[-+]?\.(?:inf|Inf|INF)
+            |\.(?:nan|NaN|NAN))$''', re.X),
+            list(u'-+0123456789.'))
+        return loader
 
     def read_config_file(self, file_name='train_config.yml', path=None):
         """
@@ -610,7 +625,7 @@ class BaseExperiment(object):
         if not os.path.exists(path):
             raise FileNotFoundError
         with open(path, 'r') as f:
-            self._config = yaml.load(f, Loader=yaml.FullLoader)
+            self._config = yaml.load(f, Loader=self.get_loader())
         return self
 
     def read_macro(self, path=None):
@@ -642,7 +657,7 @@ class BaseExperiment(object):
             return
         for _path in path.split(":"):
             with open(_path, 'r') as f:
-                macro = yaml.load(f, Loader=yaml.FullLoader)
+                macro = yaml.load(f, Loader=self.get_loader())
             # Update config with macro
             MacroReader.update_dict(self._config, macro, copy=False)
         # Done

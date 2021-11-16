@@ -168,6 +168,14 @@ class WandBMixin(object):
     def wandb(self):
         return wandb
 
+    def update_wandb_config(self):
+        # Presumes that wandb is already initialized so there is a run_id
+        run_id = self.find_existing_wandb_run_id()
+        api = wandb.Api()
+        run = api.run(f"{self.WANDB_ENTITY}/{self.WANDB_PROJECT}/{run_id}")
+        run.config = self._config
+        run.update()
+
     @property
     def log_wandb_now(self):
         frequency = self.get('wandb/log_every', None)
