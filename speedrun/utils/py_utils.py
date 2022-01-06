@@ -132,12 +132,13 @@ def unflatten_dict(d, sep="/"):
     return result
 
 
-def recursive_update(d1, d2):
+def recursive_update(d1, d2, skip="speedrun:skip_recursive_update"):
     for key, val in d2.items():
         if isinstance(val, Mapping):
             d1[key] = recursive_update(d1.get(key, {}), val)
         else:
-            d1[key] = val
+            if val != skip:
+                d1[key] = val
     return d1
 
 
