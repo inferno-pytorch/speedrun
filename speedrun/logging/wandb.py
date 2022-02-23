@@ -376,3 +376,7 @@ class SweepRunner(BaseExperiment):
                                count=1)
         else:
             return self.run_sweep_experiment()
+
+def read_wandb_entity():
+    config = read_yaml(os.path.join(os.path.expanduser('~'), '.wandb_entity.yml'))
+    return config['entity']
