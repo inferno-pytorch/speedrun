@@ -21,6 +21,7 @@ class WandBMixin(object):
     WANDB_JOB_TYPE = 'train'
     WANDB_PROJECT = None
     WANDB_ENTITY = None
+    WANDB_SETTINGS = None
 
     @property
     def wandb_directory(self):
@@ -64,7 +65,7 @@ class WandBMixin(object):
         run = wandb.init(job_type=self.WANDB_JOB_TYPE, dir=self.wandb_directory, resume=resume,
                          project=self.WANDB_PROJECT, config=self.wandb_config, id=run_id,
                          entity=self.WANDB_ENTITY, group=self.wandb_group, name=self.wandb_run_name,
-                         notes=self.get_arg("wandb.notes", None))
+                         notes=self.get_arg("wandb.notes", None), settings=self.WANDB_SETTINGS)
         self.wandb_run = run
         # Dump all wandb info to file
         self.dump_wandb_info()
