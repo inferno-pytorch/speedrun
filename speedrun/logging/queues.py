@@ -195,7 +195,9 @@ class QueueMixin(object):
         return item if item is not Nothing else default
 
     def receive_all_reports(
-        self, name: str = "default", ack: bool = False,
+        self,
+        name: str = "default",
+        ack: bool = False,
     ):
         class Nothing(object):
             pass

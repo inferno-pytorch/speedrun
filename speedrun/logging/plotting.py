@@ -1,6 +1,7 @@
 try:
     import matplotlib
-    matplotlib.use('Agg')
+
+    matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 except ImportError:
     plt = None
@@ -20,9 +21,9 @@ class MatplotlibMixin(object):
         buffer.shape = (height, width, 3)
         if channel_first:
             buffer = np.moveaxis(buffer, 2, 0)
-        if scaling == '0-1':
-            buffer = buffer.astype('float32') / 255.
-        elif scaling == '0-255' or scaling is None:
+        if scaling == "0-1":
+            buffer = buffer.astype("float32") / 255.0
+        elif scaling == "0-255" or scaling is None:
             pass
         else:
             raise NotImplementedError

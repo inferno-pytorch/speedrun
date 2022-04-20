@@ -8,6 +8,7 @@ import random
 
 class Namespace(_argparse__Namespace):
     """A fancier Namespace."""
+
     def get(self, tag, default=None, ensure_exists=False):
         paths = tag.split("/")
         data = self.__dict__
@@ -29,7 +30,7 @@ class Namespace(_argparse__Namespace):
         return self
 
     def set(self, tag, value):
-        paths = tag.split('/')
+        paths = tag.split("/")
         data = self
         for path in paths[:-1]:
             if path in data:
@@ -46,14 +47,14 @@ class Namespace(_argparse__Namespace):
 
 
 class MacroReader(object):
-    WAKE_KEY = '__speedrun__'
+    WAKE_KEY = "__speedrun__"
     # Commands
-    COMMAND_PURGE = 'purge'
-    COMMAND_APPEND = 'append'
+    COMMAND_PURGE = "purge"
+    COMMAND_APPEND = "append"
 
     @classmethod
     def parse_command(cls, cmd):
-        return cmd.split(';')
+        return cmd.split(";")
 
     @classmethod
     def remove_wake_keys(cls, d):
@@ -86,8 +87,9 @@ class MacroReader(object):
             # Check if we're purging/appending to existing content
             if isinstance(macro_v, Mapping) and cls.WAKE_KEY in macro_v:
                 macro_command = macro_v.pop(cls.WAKE_KEY)
-                purge_now = (cls.COMMAND_PURGE in cls.parse_command(macro_command) or
-                             f"__{cls.COMMAND_PURGE}__" in cls.parse_command(macro_command))
+                purge_now = cls.COMMAND_PURGE in cls.parse_command(
+                    macro_command
+                ) or f"__{cls.COMMAND_PURGE}__" in cls.parse_command(macro_command)
             else:
                 purge_now = False
             if isinstance(macro_v, list):
@@ -96,9 +98,15 @@ class MacroReader(object):
                     macro_v.remove({cls.WAKE_KEY: cls.COMMAND_APPEND})
             else:
                 append_now = False
-            if isinstance(macro_v, Mapping) and isinstance(config_v, Mapping) and not purge_now:
+            if (
+                isinstance(macro_v, Mapping)
+                and isinstance(config_v, Mapping)
+                and not purge_now
+            ):
                 cls.update_dict(config_v, macro_v, copy=copy)
-            elif isinstance(macro_v, list) and isinstance(config_v, list) and append_now:
+            elif (
+                isinstance(macro_v, list) and isinstance(config_v, list) and append_now
+            ):
                 config[macro_k] = list(config_v) + list(macro_v)
             else:
                 if copy:
@@ -107,7 +115,7 @@ class MacroReader(object):
                     config[macro_k] = cls.remove_wake_keys(macro_v)
 
 
-def flatten_dict(d, parent_key='', sep='_'):
+def flatten_dict(d, parent_key="", sep="_"):
     # https://stackoverflow.com/a/6027615
     items = []
     for k, v in d.items():

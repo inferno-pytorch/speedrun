@@ -39,21 +39,21 @@ def torch_tensor(loader, node):
     return torch.tensor(loader.construct_sequence(node))
 
 
-yaml.add_constructor('!Add', add)
-yaml.add_constructor('!Mul', mul)
-yaml.add_constructor('!Sub', sub)
-yaml.add_constructor('!Div', div)
-yaml.add_constructor('!NumpyArray', numpy_array)
-yaml.add_constructor('!TorchTensor', torch_tensor)
+yaml.add_constructor("!Add", add)
+yaml.add_constructor("!Mul", mul)
+yaml.add_constructor("!Sub", sub)
+yaml.add_constructor("!Div", div)
+yaml.add_constructor("!NumpyArray", numpy_array)
+yaml.add_constructor("!TorchTensor", torch_tensor)
 
 
 def dump_yaml(d, path):
-    with open(path, 'w+') as f:
+    with open(path, "w+") as f:
         yaml.dump(d, f)
     return d
 
 
 def read_yaml(path):
-    with open(path, 'r') as f:
+    with open(path, "r") as f:
         d = yaml.load(f, Loader=yaml.FullLoader)
     return d

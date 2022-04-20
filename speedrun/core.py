@@ -6,6 +6,7 @@ import subprocess
 import re
 
 import yaml
+
 # This registers the constructors
 from .utils.py_utils import Namespace, MacroReader, Unset, makedirs
 
@@ -15,10 +16,12 @@ try:
 except ImportError:
     try:
         import dill
+
         serializer = dill
     except ImportError:
         dill = None
         import pickle
+
         serializer = pickle
 
     def save(obj, file_path):
@@ -33,6 +36,7 @@ except ImportError:
 
 class BaseExperiment(object):
     """This could be the name of the method BaseExperiment.run() should call by default."""
+
     DEFAULT_DISPATCH = None
 
     def __init__(self, experiment_directory=None):
@@ -50,9 +54,11 @@ class BaseExperiment(object):
         self._step = None
         self._epoch = None
         self._config = {}
-        self._meta_config = {'exclude_attrs_from_save': [],
-                             'stateless_attributes': [],
-                             'stateful_attributes': []}
+        self._meta_config = {
+            "exclude_attrs_from_save": [],
+            "stateless_attributes": [],
+            "stateful_attributes": [],
+        }
         self._cache = {}
         self._argv = None
         self._default_dispatch = None
@@ -96,10 +102,10 @@ class BaseExperiment(object):
     def experiment_directory(self, value):
         if value is not None:
             # Make directories
-            makedirs(os.path.join(value, 'Configurations'), exist_ok=True)
-            makedirs(os.path.join(value, 'Logs'), exist_ok=True)
-            makedirs(os.path.join(value, 'Weights'), exist_ok=True)
-            makedirs(os.path.join(value, 'Plots'), exist_ok=True)
+            makedirs(os.path.join(value, "Configurations"), exist_ok=True)
+            makedirs(os.path.join(value, "Logs"), exist_ok=True)
+            makedirs(os.path.join(value, "Weights"), exist_ok=True)
+            makedirs(os.path.join(value, "Plots"), exist_ok=True)
             self._experiment_directory = value
 
     @property
@@ -132,7 +138,7 @@ class BaseExperiment(object):
     def log_directory(self):
         """Directory where the log files go."""
         if self._experiment_directory is not None:
-            return os.path.join(self._experiment_directory, 'Logs')
+            return os.path.join(self._experiment_directory, "Logs")
         else:
             return None
 
@@ -140,19 +146,19 @@ class BaseExperiment(object):
     def checkpoint_directory(self):
         """Directory where the checkpoints go."""
         if self._experiment_directory is not None:
-            return os.path.join(self._experiment_directory, 'Weights')
+            return os.path.join(self._experiment_directory, "Weights")
         else:
             return None
 
     @property
     def checkpoint_path(self):
-        return os.path.join(self.checkpoint_directory, f'ckpt_iter_{self.step}.pt')
+        return os.path.join(self.checkpoint_directory, f"ckpt_iter_{self.step}.pt")
 
     @property
     def plot_directory(self):
         """Directory where the plots go."""
         if self._experiment_directory is not None:
-            return os.path.join(self._experiment_directory, 'Plots')
+            return os.path.join(self._experiment_directory, "Plots")
         else:
             return None
 
@@ -160,12 +166,13 @@ class BaseExperiment(object):
     def configuration_directory(self):
         """Directory where the configurations go."""
         if self._experiment_directory is not None:
-            return os.path.join(self._experiment_directory, 'Configurations')
+            return os.path.join(self._experiment_directory, "Configurations")
         else:
             return None
 
-    def inherit_configuration(self, from_experiment_directory, file_name='train_config.yml',
-                              read=True):
+    def inherit_configuration(
+        self, from_experiment_directory, file_name="train_config.yml", read=True
+    ):
         """
         Given another experiment directory, inherit the configuration file by
         copying it over to the current configuration directory.
@@ -183,14 +190,16 @@ class BaseExperiment(object):
             BaseExperiment
 
         """
-        source_path = os.path.join(from_experiment_directory, 'Configurations', file_name)
+        source_path = os.path.join(
+            from_experiment_directory, "Configurations", file_name
+        )
         target_path = os.path.join(self.configuration_directory, file_name)
         shutil.copy(source_path, target_path)
         if read:
             self.read_config_file()
         return self
 
-    def dump_configuration(self, file_name='train_config.yml'):
+    def dump_configuration(self, file_name="train_config.yml"):
         """
         Dump current configuration (dictionary) to a file in the configuration directory
         of the current experiment.
@@ -205,7 +214,7 @@ class BaseExperiment(object):
             BaseExperiment
         """
         dump_path = os.path.join(self.configuration_directory, file_name)
-        with open(dump_path, 'w') as f:
+        with open(dump_path, "w") as f:
             yaml.dump(self._config, f)
         return self
 
@@ -238,15 +247,18 @@ class BaseExperiment(object):
         >>> assert isinstance(experiment.get_arg('blah'), int)  # type parsing with ast
         >>> experiment.get_arg(0)   # Prints './EXPERIMENT-0'
         """
-        assert self._argv is not None, "Args not parsed yet. Have you called `self.record_args()`?"
+        assert (
+            self._argv is not None
+        ), "Args not parsed yet. Have you called `self.record_args()`?"
         if not isinstance(tag, str):
             assert isinstance(tag, int)
             if ensure_exists:
-                assert tag < len(self._argv), \
-                    f"Accessing arg at index {tag}, but only {len(self._argv)} args available."
+                assert tag < len(
+                    self._argv
+                ), f"Accessing arg at index {tag}, but only {len(self._argv)} args available."
             return default if tag >= len(self._argv) else self._argv[tag]
-        if f'--{tag}' in self._argv:
-            value = self._argv[self._argv.index(f'--{tag}') + 1]
+        if f"--{tag}" in self._argv:
+            value = self._argv[self._argv.index(f"--{tag}") + 1]
             # try to convert value to an int or a float or something
             try:
                 value = ast.literal_eval(value)
@@ -295,9 +307,9 @@ class BaseExperiment(object):
 
         """
         for arg in self._argv:
-            if arg.startswith('--config.'):
-                tag = arg.replace('--config.', '').replace('.', '/')
-                value = self.get_arg(arg.lstrip('--'), ensure_exists=True)
+            if arg.startswith("--config."):
+                tag = arg.replace("--config.", "").replace(".", "/")
+                value = self.get_arg(arg.lstrip("--"), ensure_exists=True)
                 if value == "speedrun:unset":
                     self.unset(tag)
                 else:
@@ -310,7 +322,7 @@ class BaseExperiment(object):
         unregistered unpickleable attributes, `BaseExperiment.checkpoint` might throw an error
         if not overloaded.
         """
-        self._meta_config['exclude_attrs_from_save'].extend(list(attributes))
+        self._meta_config["exclude_attrs_from_save"].extend(list(attributes))
         return self
 
     def checkpoint(self, force=True):
@@ -338,12 +350,19 @@ class BaseExperiment(object):
         if force:
             do_checkpoint = True
         else:
-            do_checkpoint = (self.step % self.get('training/checkpoint_every')) == 0
+            do_checkpoint = (self.step % self.get("training/checkpoint_every")) == 0
         if do_checkpoint:
-            self_dict = {key: val for key, val in self.__dict__.items()
-                         if key not in self._meta_config['exclude_attrs_from_save']}
-            save(self_dict, os.path.join(self.checkpoint_directory,
-                                         f'checkpoint_iter_{self.step}.pt'))
+            self_dict = {
+                key: val
+                for key, val in self.__dict__.items()
+                if key not in self._meta_config["exclude_attrs_from_save"]
+            }
+            save(
+                self_dict,
+                os.path.join(
+                    self.checkpoint_directory, f"checkpoint_iter_{self.step}.pt"
+                ),
+            )
         return self
 
     def load_from_checkpoint(self, step=None):
@@ -361,9 +380,9 @@ class BaseExperiment(object):
             BaseExperiment
         """
         for filename in os.listdir(self.checkpoint_directory):
-            if filename.startswith('checkpoint_iter_') and filename.endswith('.pt'):
+            if filename.startswith("checkpoint_iter_") and filename.endswith(".pt"):
                 try:
-                    ckpt_step = int(filename.strip('checkpoint_iter_.pt'))
+                    ckpt_step = int(filename.strip("checkpoint_iter_.pt"))
                 except ValueError:
                     continue
                 if ckpt_step == step:
@@ -372,8 +391,10 @@ class BaseExperiment(object):
                     self.__dict__.update(self_dict)
                     break
         else:
-            raise FileNotFoundError(f"No checkpoint for step {step} found in "
-                                    f"{self.checkpoint_directory}.")
+            raise FileNotFoundError(
+                f"No checkpoint for step {step} found in "
+                f"{self.checkpoint_directory}."
+            )
         return self
 
     def get(self, tag, default=None, ensure_exists=False):
@@ -439,7 +460,7 @@ class BaseExperiment(object):
         -------
             BaseExperiment
         """
-        paths = tag.split('/')
+        paths = tag.split("/")
         data = self._config
         for path in paths[:-1]:
             if path in data:
@@ -591,22 +612,26 @@ class BaseExperiment(object):
     def bundle(self, **kwargs):
         """Pack kwargs to a Namespace object."""
         return Namespace(**kwargs)
-    
+
     def get_loader(self):
         loader = yaml.FullLoader
         loader.add_implicit_resolver(
-            u'tag:yaml.org,2002:float',
-            re.compile(u'''^(?:
+            "tag:yaml.org,2002:float",
+            re.compile(
+                """^(?:
             [-+]?(?:[0-9][0-9_]*)\.[0-9_]*(?:[eE][-+]?[0-9]+)?
             |[-+]?(?:[0-9][0-9_]*)(?:[eE][-+]?[0-9]+)
             |\.[0-9_]+(?:[eE][-+][0-9]+)?
             |[-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+\.[0-9_]*
             |[-+]?\.(?:inf|Inf|INF)
-            |\.(?:nan|NaN|NAN))$''', re.X),
-            list(u'-+0123456789.'))
+            |\.(?:nan|NaN|NAN))$""",
+                re.X,
+            ),
+            list("-+0123456789."),
+        )
         return loader
 
-    def read_config_file(self, file_name='train_config.yml', path=None):
+    def read_config_file(self, file_name="train_config.yml", path=None):
         """
         Read configuration from a YAML file.
 
@@ -621,10 +646,14 @@ class BaseExperiment(object):
         -------
             BaseExperiment
         """
-        path = os.path.join(self.configuration_directory, file_name) if path is None else path
+        path = (
+            os.path.join(self.configuration_directory, file_name)
+            if path is None
+            else path
+        )
         if not os.path.exists(path):
             raise FileNotFoundError
-        with open(path, 'r') as f:
+        with open(path, "r") as f:
             self._config = yaml.load(f, Loader=self.get_loader())
         return self
 
@@ -652,11 +681,11 @@ class BaseExperiment(object):
             BaseExperiment
         """
         if path is None:
-            path = self.get_arg('macro')
+            path = self.get_arg("macro")
         if path is None:
             return
         for _path in path.split(":"):
-            with open(_path, 'r') as f:
+            with open(_path, "r") as f:
                 macro = yaml.load(f, Loader=self.get_loader())
             # Update config with macro
             MacroReader.update_dict(self._config, macro, copy=False)
@@ -672,8 +701,9 @@ class BaseExperiment(object):
         return self
 
     def purge_existing_experiment_directory(self, experiment_directory=None):
-        experiment_directory = self.get_arg(1) \
-            if experiment_directory is None else experiment_directory
+        experiment_directory = (
+            self.get_arg(1) if experiment_directory is None else experiment_directory
+        )
         if experiment_directory is None:
             raise RuntimeError("No experiment directory found to be purged.")
         if os.path.exists(experiment_directory):
@@ -682,12 +712,15 @@ class BaseExperiment(object):
 
     @staticmethod
     def register_hook(fn, key):
-        setattr(fn, f'__is_speedrun_{key}_hook', True)
+        setattr(fn, f"__is_speedrun_{key}_hook", True)
         return fn
 
     def execute_hooks(self, key):
-        hook_names = [attry for attry in dir(type(self))
-                      if getattr(getattr(type(self), attry), f'__is_speedrun_{key}_hook', False)]
+        hook_names = [
+            attry
+            for attry in dir(type(self))
+            if getattr(getattr(type(self), attry), f"__is_speedrun_{key}_hook", False)
+        ]
         return {hook_name: getattr(self, hook_name)() for hook_name in hook_names}
 
     def run(self, *args, **kwargs):
@@ -712,7 +745,9 @@ class BaseExperiment(object):
 
     def dispatch(self, key, *args, **kwargs):
         """Dispatches a method given its name as `key`."""
-        assert hasattr(self, key), f"Trying to dispatch method {key}, but it doesn't exist."
+        assert hasattr(
+            self, key
+        ), f"Trying to dispatch method {key}, but it doesn't exist."
         return getattr(self, key)(*args, **kwargs)
 
     def get_dispatch_key(self):
@@ -722,8 +757,8 @@ class BaseExperiment(object):
         in that order.
         """
         # First look for commandline args
-        if self._argv is not None and self.get_arg('dispatch', None) is not None:
-            return self.get_arg('dispatch', ensure_exists=True)
+        if self._argv is not None and self.get_arg("dispatch", None) is not None:
+            return self.get_arg("dispatch", ensure_exists=True)
         elif self.find_default_dispatch() is not None:
             return self.find_default_dispatch()
         elif self._default_dispatch is not None:
@@ -733,7 +768,9 @@ class BaseExperiment(object):
             # If even that fails, use the class defined default dispatch
             return self.DEFAULT_DISPATCH
         else:
-            raise RuntimeError("No default dispatch could be found. Please set it first.")
+            raise RuntimeError(
+                "No default dispatch could be found. Please set it first."
+            )
 
     @staticmethod
     def register_default_dispatch(fn):
@@ -746,7 +783,7 @@ class BaseExperiment(object):
         ... def my_default_method(self, *args):
         ...     return ...
         """
-        setattr(fn, '__is_speedrun_default_dispatch', True)
+        setattr(fn, "__is_speedrun_default_dispatch", True)
         return fn
 
     def set_default_dispatch(self, method_name):
@@ -762,8 +799,12 @@ class BaseExperiment(object):
         -------
             BaseExperiment
         """
-        assert method_name in dir(type(self)), f"Method name {method_name} not found in list of attributes."
-        assert callable(getattr(type(self), method_name)), f"Default dispatch method name {method_name} should be callable."
+        assert method_name in dir(
+            type(self)
+        ), f"Method name {method_name} not found in list of attributes."
+        assert callable(
+            getattr(type(self), method_name)
+        ), f"Default dispatch method name {method_name} should be callable."
         self._default_dispatch = method_name
         return self
 
@@ -774,7 +815,9 @@ class BaseExperiment(object):
     def find_default_dispatch(self):
         """Find the name of the function marked as default dispatch."""
         for attry in dir(type(self)):
-            if getattr(getattr(type(self), attry), '__is_speedrun_default_dispatch', False):
+            if getattr(
+                getattr(type(self), attry), "__is_speedrun_default_dispatch", False
+            ):
                 return attry
 
     @staticmethod
@@ -783,11 +826,11 @@ class BaseExperiment(object):
         Decorator to mark a method as a pre-dispatch hook. Pre-dispatch hooks are run before the
         function being dispatched is called.
         """
-        return BaseExperiment.register_hook(fn, 'pre_dispatch')
+        return BaseExperiment.register_hook(fn, "pre_dispatch")
 
     def execute_pre_dispatch_hooks(self):
         """Execute the pre-dispatch hooks, if available. See also: `register_pre_dispatch_hook`."""
-        return self.execute_hooks('pre_dispatch')
+        return self.execute_hooks("pre_dispatch")
 
     def clean_up(self):
         """
@@ -812,17 +855,19 @@ class BaseExperiment(object):
         """
         try:
             gitcmd = ["git", "rev-parse", "--verify", "HEAD"]
-            gitrev = subprocess.check_output(gitcmd).decode('latin1').strip()
+            gitrev = subprocess.check_output(gitcmd).decode("latin1").strip()
         except subprocess.CalledProcessError:
             gitrev = "none"
-        if not overwrite and self.get('git_rev', None) is not None:
+        if not overwrite and self.get("git_rev", None) is not None:
             # Git rev already in config and we're not overwriting, so...
             pass
         else:
             self.set("git_rev", gitrev)
         return self
 
-    def auto_setup(self, update_git_revision=True, dump_configuration=True, read_config_file=True):
+    def auto_setup(
+        self, update_git_revision=True, dump_configuration=True, read_config_file=True
+    ):
         """
         Set things up automagically.
 
@@ -861,10 +906,10 @@ class BaseExperiment(object):
             BaseExperiment
         """
         self.record_args()
-        if self.get_arg('purge', False):
+        if self.get_arg("purge", False):
             self.purge_existing_experiment_directory()
         self.parse_experiment_directory()
-        inherit_from = self.get_arg('inherit')
+        inherit_from = self.get_arg("inherit")
         if inherit_from is not None:
             # Inherit configuration file
             self.inherit_configuration(inherit_from, read=False)

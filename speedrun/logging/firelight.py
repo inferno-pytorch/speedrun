@@ -1,4 +1,5 @@
 import torch
+
 try:
     import firelight
 except ImportError:
@@ -6,7 +7,8 @@ except ImportError:
 
 try:
     import matplotlib
-    matplotlib.use('Agg')
+
+    matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 except ImportError:
     plt = None
@@ -18,7 +20,7 @@ class FirelightMixin(object):
 
     @property
     def visualizer(self):
-        if not hasattr(self, '_visualizer'):
+        if not hasattr(self, "_visualizer"):
             self._visualizer = self.load_visualizer()
         return self._visualizer
 
@@ -26,7 +28,7 @@ class FirelightMixin(object):
         if file_name is not None:
             config = file_name
         else:
-            config = self.get('firelight')
+            config = self.get("firelight")
         visualizer = firelight.get_visualizer(config)
         return visualizer
 
@@ -36,5 +38,8 @@ class FirelightMixin(object):
             image_grid.numpy()
         return image_grid
 
-    def save_image_grid(self, states, plot_name='plots'):
-        plt.imsave(f'{self.plot_directory}/{plot_name}_step_{self.step}.png', self.get_image_grid(states))
+    def save_image_grid(self, states, plot_name="plots"):
+        plt.imsave(
+            f"{self.plot_directory}/{plot_name}_step_{self.step}.png",
+            self.get_image_grid(states),
+        )
