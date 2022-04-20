@@ -2,6 +2,7 @@ import csv
 import os.path as path
 import os
 import time
+from typing import Any
 
 try:
     import torch
@@ -158,4 +159,43 @@ class IOMixin(object):
 
     def dump_yaml(self, tag, payload):
         dump_yaml(payload, path=os.path.join(self.yaml_dump_directory, f"{tag}.yml"))
+        return self
+
+    def log_key_value_as_csv(
+        self,
+        key: str,
+        value: Any,
+        make_directory: bool = True,
+        include_step: bool = True,
+        include_epoch: bool = True,
+        include_timestamp: bool = True,
+    ):
+        log_path = os.path.join(self.log_directory, f"{key}.csv")
+        # Make the dir if needed
+        dirname = os.path.dirname(log_path)
+        if not os.path.exists(dirname) and make_directory:
+            os.makedirs(dirname)
+        # Record if the file is new
+        is_new_file = not os.path.exists(log_path)
+        # Make the field names and log row
+        fieldnames = []
+        log_row = {}
+        if include_step:
+            fieldnames.append("step")
+            log_row["step"] = self.step
+        if include_epoch:
+            fieldnames.append("epoch")
+            log_row["epoch"] = self.epoch
+        if include_timestamp:
+            fieldnames.append("timestamp")
+            log_row["timestamp"] = time.time()
+        fieldnames.append("value")
+        log_row["value"] = value
+        # Open and log
+        with open(log_path, "a") as log_file:
+            writer = csv.DictWriter(log_file, fieldnames=fieldnames)
+            if is_new_file:
+                writer.writeheader()
+            writer.writerow(log_row)
+            log_file.flush()
         return self
