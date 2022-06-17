@@ -52,18 +52,22 @@ class WandBMixin(object):
 
     @property
     def wandb_tags(self):
-        return self.wandb_config.get("wandb_tags", [])
+        return [self.wandb_config.get("wandb_tags")] or []
 
     def initialize_wandb(self, resume=False):
         assert wandb is not None, "Install wandb first!"
         # If wandb is already initialized, ignore this call
         if self.wandb_run is not None:
             return self
-        assert self.WANDB_PROJECT is not None, "Please set self.WANDB_PROJECT to use wandb."
+        assert (
+            self.WANDB_PROJECT is not None
+        ), "Please set self.WANDB_PROJECT to use wandb."
         # If resuming, get the wandb id
         if resume:
             run_id = self.find_existing_wandb_run_id()
-            assert run_id is not None, "WandB run_id could not be identified. Set WANDB_RUN_ID environment variable."
+            assert (
+                run_id is not None
+            ), "WandB run_id could not be identified. Set WANDB_RUN_ID environment variable."
         else:
             run_id = None
         run = wandb.init(
@@ -104,7 +108,9 @@ class WandBMixin(object):
                 info = yaml.load(f, Loader=yaml.FullLoader)
             run_id = info[wandb.env.RUN_ID]
         elif self.get_arg("inherit", None) is not None:
-            potential_wandb_info_path = os.path.join(self.get_arg("inherit"), "Logs", "wandb_info.yml")
+            potential_wandb_info_path = os.path.join(
+                self.get_arg("inherit"), "Logs", "wandb_info.yml"
+            )
             if os.path.exists(potential_wandb_info_path):
                 with open(potential_wandb_info_path, "r") as f:
                     info = yaml.load(f, Loader=yaml.FullLoader)
@@ -118,7 +124,9 @@ class WandBMixin(object):
             "WANDB_ENTITY": self.WANDB_ENTITY,
             "WANDB_RUN_ID": self.wandb_run_id,
         }
-        info.update({key: os.environ[key] for key in os.environ if key.startswith("WANDB_")})
+        info.update(
+            {key: os.environ[key] for key in os.environ if key.startswith("WANDB_")}
+        )
         with open(os.path.join(self.log_directory, "wandb_info.yml"), "w") as f:
             yaml.dump(info, f)
         return self
@@ -144,7 +152,9 @@ class WandBMixin(object):
             try:
                 value = value.detach().cpu().numpy()
             except AttributeError:
-                raise TypeError(f"value must be a numpy ndarray. Got {type(value).__name__} instead.")
+                raise TypeError(
+                    f"value must be a numpy ndarray. Got {type(value).__name__} instead."
+                )
         # Allow for value to be two dimensional
         if value.ndim == 2:
             value = value[None]
@@ -154,7 +164,9 @@ class WandBMixin(object):
         elif image_format.lower() == "hwc":
             pass
         else:
-            raise ValueError(f"image_format must be one of chw or hwc; got {image_format} instead.")
+            raise ValueError(
+                f"image_format must be one of chw or hwc; got {image_format} instead."
+            )
         return wandb.Image(value, caption=caption)
 
     def wandb_log(self, **metrics):
@@ -204,7 +216,9 @@ class WandBMixin(object):
         else:
             return False
 
-    def update_configuration_from_existing_wandb_run(self, run_id=None, dump_configuration=False):
+    def update_configuration_from_existing_wandb_run(
+        self, run_id=None, dump_configuration=False
+    ):
         if run_id is None:
             # Read from command line
             run_id = self.get_arg("wandb.inherit")
@@ -221,7 +235,9 @@ class WandBMixin(object):
             self.dump_configuration()
         return self
 
-    def inherit_configuration(self, from_experiment_directory, file_name="train_config.yml", read=True):
+    def inherit_configuration(
+        self, from_experiment_directory, file_name="train_config.yml", read=True
+    ):
         if not from_experiment_directory.startswith("wandb:"):
             return super(WandBMixin, self).inherit_configuration(
                 from_experiment_directory, file_name=file_name, read=read
@@ -272,7 +288,9 @@ class WandBSweepMixin(WandBMixin):
             raise FileNotFoundError(f"The file {sweep_config_path} does not exist.")
         sweep_config = read_yaml(sweep_config_path)
         # Set sweep id, dump info to file and exit.
-        self.wandb_sweep_id = sweep_id = wandb.sweep(sweep_config, project=self.WANDB_PROJECT, entity=self.WANDB_ENTITY)
+        self.wandb_sweep_id = sweep_id = wandb.sweep(
+            sweep_config, project=self.WANDB_PROJECT, entity=self.WANDB_ENTITY
+        )
         dump_yaml(
             {"wandb_sweep_id": sweep_id},
             os.path.join(self.configuration_directory, "wandb_sweep_info.yml"),
@@ -283,19 +301,29 @@ class WandBSweepMixin(WandBMixin):
         )
         return sweep_id
 
-    def inherit_configuration(self, from_experiment_directory, file_name="train_config.yml", read=True):
+    def inherit_configuration(
+        self, from_experiment_directory, file_name="train_config.yml", read=True
+    ):
         if self.get_arg("wandb.sweep", False):
             sweep_file_names = ["wandb_sweep_info.yml", "wandb_sweep_config.yml"]
             for _sweep_file_name in sweep_file_names:
-                source_path = os.path.join(from_experiment_directory, "Configurations", _sweep_file_name)
-                target_path = os.path.join(self.configuration_directory, _sweep_file_name)
+                source_path = os.path.join(
+                    from_experiment_directory, "Configurations", _sweep_file_name
+                )
+                target_path = os.path.join(
+                    self.configuration_directory, _sweep_file_name
+                )
                 if os.path.exists(source_path):
                     shutil.copy(source_path, target_path)
-        return super(WandBSweepMixin, self).inherit_configuration(from_experiment_directory, file_name, read)
+        return super(WandBSweepMixin, self).inherit_configuration(
+            from_experiment_directory, file_name, read
+        )
 
     def read_config_file(self, file_name="train_config.yml", path=None):
         if self.get_arg("wandb.sweep", False):
-            sweep_info_path = os.path.join(self.configuration_directory, "wandb_sweep_info.yml")
+            sweep_info_path = os.path.join(
+                self.configuration_directory, "wandb_sweep_info.yml"
+            )
             if os.path.exists(sweep_info_path):
                 self.wandb_sweep_id = read_yaml(sweep_info_path)["wandb_sweep_id"]
         return super(WandBSweepMixin, self).read_config_file(file_name, path)
@@ -315,7 +343,9 @@ class WandBSweepMixin(WandBMixin):
             # Check if we're dealing with a template
             template = self.get_arg(1)
             if template is None:
-                raise RuntimeError("Can't find experiment directory in command line args.")
+                raise RuntimeError(
+                    "Can't find experiment directory in command line args."
+                )
             glob_template = template.format(WANDB_RUN_NUM="*")
             if glob_template == template:
                 # No template found, pretend this didn't happen
@@ -376,7 +406,9 @@ class SweepRunner(BaseExperiment):
         if self.get_arg("wandb.sweep", False):
             parent_experiment_directory = self.get_arg("inherit", ensure_exists=True)
             # Read stuff from parent experiment
-            sweep_info_file_path = os.path.join(parent_experiment_directory, "Configurations", "wandb_sweep_info.yml")
+            sweep_info_file_path = os.path.join(
+                parent_experiment_directory, "Configurations", "wandb_sweep_info.yml"
+            )
             # First try to get sweep_id from commandline args
             if self.get_arg("wandb.sweep_id") is not None:
                 self._wandb_sweep_id = self.get_arg("wandb.sweep_id")
@@ -392,8 +424,12 @@ class SweepRunner(BaseExperiment):
         ).run(*run_args, **run_kwargs)
 
     def run_sweep_experiment(self):
-        experiment = self._sweep_experiment_cls(*self._sweep_experiment_init_args, **self._sweep_experiment_init_kwargs)
-        return experiment.run(*self._sweep_experiment_run_args, **self._sweep_experiment_run_kwargs)
+        experiment = self._sweep_experiment_cls(
+            *self._sweep_experiment_init_args, **self._sweep_experiment_init_kwargs
+        )
+        return experiment.run(
+            *self._sweep_experiment_run_args, **self._sweep_experiment_run_kwargs
+        )
 
     @property
     def wandb_project(self):
