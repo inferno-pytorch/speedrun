@@ -50,10 +50,6 @@ class WandBMixin(object):
     def wandb_config(self):
         return flatten_dict(self._config, sep="__")
 
-    @property
-    def wandb_tags(self):
-        return [self.wandb_config.get("wandb_tags")] or []
-
     def initialize_wandb(self, resume=False):
         assert wandb is not None, "Install wandb first!"
         # If wandb is already initialized, ignore this call
@@ -80,7 +76,6 @@ class WandBMixin(object):
             entity=self.WANDB_ENTITY,
             group=self.wandb_group,
             name=self.wandb_run_name,
-            tags=self.wandb_tags,
             notes=self.get_arg("wandb.notes", None),
             settings=self.WANDB_SETTINGS,
         )
