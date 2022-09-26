@@ -50,6 +50,30 @@ class WandBMixin(object):
     def wandb_config(self):
         return flatten_dict(self._config, sep="__")
 
+    @property
+    def wandb_tags(self):
+        return getattr(self, "_wandb_tags", None)
+
+    def parse_wandb_tags(self):
+        if self.get_arg("wandb.tags", None) is not None:
+            tags = self.get_arg("wandb.tags").split(",")
+            # Get the current tags
+            if not hasattr(self, "_wandb_tags"):
+                setattr(self, "_wandb_tags", tags)
+            else:
+                existing_tags = getattr(self, "_wandb_tags")
+                getattr(self, "_wandb_tags").extend(
+                    [tag for tag in tags if tag not in existing_tags]
+                )
+        return getattr(self, "_wandb_tags", None)
+
+    def add_wandb_tags(self, *tags):
+        if hasattr(self, "_wandb_tags"):
+            getattr(self, "_wandb_tags").extend(list(tags))
+        else:
+            setattr(self, "_wandb_tags", list(tags))
+        return self
+
     def initialize_wandb(self, resume=False):
         assert wandb is not None, "Install wandb first!"
         # If wandb is already initialized, ignore this call
@@ -77,7 +101,9 @@ class WandBMixin(object):
             group=self.wandb_group,
             name=self.wandb_run_name,
             notes=self.get_arg("wandb.notes", None),
+            tags=self.parse_wandb_tags(),
             settings=self.WANDB_SETTINGS,
+
         )
         self.wandb_run = run
         # Dump all wandb info to file
