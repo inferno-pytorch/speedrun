@@ -433,9 +433,21 @@ class BaseExperiment(object):
         data = self._config
         # noinspection PyShadowingNames
         for path in paths:
-            if ensure_exists:
-                assert path in data
-            data = data.get(path, default if path == paths[-1] else {})
+            if isinstance(data, dict):
+                if ensure_exists:
+                    assert path in data
+                data = data.get(path, default if path == paths[-1] else {})
+            elif isinstance(data, list):
+                if path.isdigit():
+                    data = data[int(path)]
+                else:
+                    raise ValueError(
+                        f"Cannot index list with {path}."
+                    )
+            else:
+                raise TypeError(
+                    f"Cannot index {type(data)} with {path}."
+                )
         return data
 
     def set(self, tag, value):
@@ -463,11 +475,19 @@ class BaseExperiment(object):
         paths = tag.split("/")
         data = self._config
         for path in paths[:-1]:
-            if path in data:
-                data = data[path]
+            if isinstance(data, dict):
+                if path in data:
+                    data = data[path]
+                else:
+                    data.update({path: {}})
+                    data = data[path]
+            elif isinstance(data, list):
+                if path.isdigit():
+                    data = data[int(path)]
+                else:
+                    raise ValueError(f"Cannot set {tag} in {data}.")
             else:
-                data.update({path: {}})
-                data = data[path]
+                raise TypeError(f"Cannot work with data of type {data.__class__.__name__}.")
         if isinstance(value, Unset):
             # This is a signal to remove the element
             try:
