@@ -199,3 +199,22 @@ class IOMixin(object):
             writer.writerow(log_row)
             log_file.flush()
         return self
+
+    def csv_log(
+        self,
+        make_directory: bool = True,
+        include_step: bool = True,
+        include_epoch: bool = True,
+        include_timestamp: bool = True,
+        **payload,
+    ):
+        for key, value in payload.items():
+            self.log_key_value_as_csv(
+                key,
+                value,
+                make_directory=make_directory,
+                include_step=include_step,
+                include_epoch=include_epoch,
+                include_timestamp=include_timestamp,
+            )
+        return self
