@@ -115,19 +115,24 @@ class MacroReader(object):
                     config[macro_k] = cls.remove_wake_keys(macro_v)
 
 
-def flatten_dict(d, parent_key="", sep="_"):
+def flatten_dict(d, parent_key="", sep="_", flatten_lists=False, list_key_prefix="element"):
     # https://stackoverflow.com/a/6027615
     items = []
     for k, v in d.items():
         new_key = parent_key + sep + k if parent_key else k
         if isinstance(v, MutableMapping):
             items.extend(flatten_dict(v, new_key, sep=sep).items())
+        elif isinstance(v, (list, tuple)) and flatten_lists:
+            items.extend(
+                flatten_dict({f"{list_key_prefix}:{i}": v[i] for i in range(len(v))}, new_key, sep=sep).items()
+            )
         else:
             items.append((new_key, v))
     return dict(items)
 
 
 def unflatten_dict(d, sep="/"):
+    # TODO: Support unflattening lists
     result = dict()
     for key, value in d.items():
         parts = key.split(sep)

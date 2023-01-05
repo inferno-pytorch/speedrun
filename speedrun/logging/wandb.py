@@ -48,7 +48,9 @@ class WandBMixin(object):
 
     @property
     def wandb_config(self):
-        return flatten_dict(self._config, sep="__")
+        return flatten_dict(
+            self._config, sep="__", flatten_lists=True, list_key_prefix="idx"
+        )
 
     @property
     def wandb_tags(self):
@@ -103,7 +105,6 @@ class WandBMixin(object):
             notes=self.get_arg("wandb.notes", None),
             tags=self.parse_wandb_tags(),
             settings=self.WANDB_SETTINGS,
-
         )
         self.wandb_run = run
         # Dump all wandb info to file
@@ -237,6 +238,20 @@ class WandBMixin(object):
         else:
             return False
 
+    def _convert_and_set_wandb_config(self, wandb_config):
+        # Update the config
+        for key, value in wandb_config.items():
+            key = key.replace("__", "/")
+            # Replace all idx:0, idx:1, ... with 0, 1, ...
+            key = "/".join(
+                [
+                    int(k.split(":")[-1]) if k.startswith("idx:") else k
+                    for k in key.split("/")
+                ]
+            )
+            self.set(key, value)
+        return self
+
     def update_configuration_from_existing_wandb_run(
         self, run_id=None, dump_configuration=False
     ):
@@ -250,8 +265,7 @@ class WandBMixin(object):
         api = wandb.Api()
         run = api.run(f"{self.WANDB_ENTITY}/{self.WANDB_PROJECT}/{run_id}")
         run_config = run.config
-        for key, value in run_config.items():
-            self.set(key.replace("__", "/"), value)
+        self._convert_and_set_wandb_config(run_config)
         if dump_configuration:
             self.dump_configuration()
         return self
@@ -267,12 +281,11 @@ class WandBMixin(object):
         run_id = from_experiment_directory.replace("wandb:", "")
         api = wandb.Api()
         run = api.run(f"{self.WANDB_ENTITY}/{self.WANDB_PROJECT}/{run_id}")
-        run_config = unflatten_dict(run.config, sep="__")
-        # This is where the config from wandb will be dumped
-        target_path = os.path.join(self.configuration_directory, file_name)
-        dump_yaml(run_config, target_path)
-        if read:
-            self.read_config_file()
+        run_config = run.config
+        # Set the config and dump it
+        assert read, "This method does not support read=False anymore."
+        self._convert_and_set_wandb_config(run_config)
+        self.dump_configuration()
         return self
 
     def _log_x_now(self, x):
