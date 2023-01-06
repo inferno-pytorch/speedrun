@@ -68,7 +68,7 @@ class SlurmDistributor(object):
             print(message, file=sys.stderr)
         return self
 
-    def setup_chief(self):
+    def setup_parent_proc(self):
         self.record_args()
         self.auto_setup(
             dump_configuration=self.get_arg("speedrun.dump_configuration", True)
@@ -76,21 +76,21 @@ class SlurmDistributor(object):
         self.mark_config_as_ready()
         return self
 
-    def setup_padawan(self):
+    def setup_child_proc(self):
         self.record_args()
         self.parse_experiment_directory()
-        # The chief writes out the config file, which the padawan reads
+        # The parent_proc writes out the config file, which the child_proc reads
         self.wait_for_config_file(read=True)
         return self
 
     def distributed_setup(self):
         assert self.in_distributed_environment
-        # WARNING: Don't read self.is_chief, it doesn't work because
+        # WARNING: Don't read self.is_parent_proc, it doesn't work because
         # is_distributed is not set yet.
         if SLURM.rank == 0:
-            self.setup_chief()
+            self.setup_parent_proc()
         else:
-            self.setup_padawan()
+            self.setup_child_proc()
         # WARNING: It's imperative that the line below remain where it is.
         self.set("distributed/is_distributed", True)
         self.init_distributed()
@@ -157,7 +157,7 @@ class SlurmDistributor(object):
             return 0
 
     @property
-    def is_chief(self):
+    def is_parent_proc(self):
         if self.is_distributed:
             return self.rank == 0
         else:
@@ -239,7 +239,7 @@ class SlurmDistributor(object):
     def request_requeue(self, reason: str = None):
         # If this happens, we'll need to write out enough info for
         # the job to be resumed by some daemon.
-        if self.is_chief:
+        if self.is_parent_proc:
             request = {
                 "experiment_directory": self.experiment_directory,
                 "requeue_request_at": time.time(),
@@ -259,10 +259,16 @@ class SlurmDistributor(object):
     def preemption_panic(self):
         # If this happens, we'll need to write out enough info for
         # the job to be resumed by some daemon.
-        if self.is_chief:
+        if self.is_parent_proc:
             self.request_requeue(reason="preemption")
 
     def register_signal_handlers(self):
-        if self.is_chief:
+        if self.is_parent_proc:
             signal.signal(signal.SIGUSR1, self.preemption_panic)
 
+
+class BigBirdDistributor:
+    def squawk(self, message):
+        print(f"BigBirdDistributor says: {message}")
+
+DistributorMixin = SlurmDistributor if SLURM.is_available else BigBirdDistributor

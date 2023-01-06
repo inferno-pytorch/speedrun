@@ -5,6 +5,11 @@ from utils import sync_values, gather
 
 
 class SlurmSpec(object):
+
+    @property
+    def is_available(self):
+        return self.in_distributed_environment
+
     @property
     def job_id(self):
         return os.getenv("SLURM_JOB_ID")
@@ -115,4 +120,5 @@ class SlurmSpec(object):
         return self
 
 SLURM = SlurmSpec()
+
 
