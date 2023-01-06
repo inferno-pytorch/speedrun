@@ -1,11 +1,206 @@
 import os
-from typing import Callable
+from typing import Callable, Protocol
+from speedrun.distributed.utils import sync_values, gather
+
 import torch.cuda
-from utils import sync_values, gather
+import torch.distributed as dist
 
 
-class SlurmSpec(object):
+class AbstractClusterSpec(Protocol):
+    @property
+    def distributed_is_initialized(self):
+        raise NotImplementedError
+    
+    @property
+    def in_distributed_environment(self):
+        return
 
+    @property
+    def rank(self):
+        raise NotImplementedError
+
+    @property
+    def world_size(self):
+        raise NotImplementedError
+
+    @property
+    def node_id(self):
+        raise NotImplementedError
+
+    @property
+    def num_nodes(self):
+        raise NotImplementedError
+
+    @property
+    def local_id(self):
+        raise NotImplementedError
+
+    @property
+    def local_world_size(self):
+        raise NotImplementedError
+
+    @property
+    def device(self):
+        raise NotImplementedError
+
+    @property
+    def launch_node_ip_address(self):
+        raise NotImplementedError
+
+
+class GeneralClusterSpec(AbstractClusterSpec):
+    @property
+    def distributed_is_initialized(self):
+        return dist.is_available() and dist.is_initialized()
+
+    @property
+    def in_distributed_environment(self):
+        if self.distributed_is_initialized:
+            return True
+        else:
+            return self.check_externally_if_in_distributed_environment()
+
+    def check_externally_if_in_distributed_environment(self):
+        raise NotImplementedError
+
+    @property
+    def rank(self):
+        if self.distributed_is_initialized:
+            return dist.get_rank()
+        elif not self.in_distributed_environment:
+            return 0
+        else:
+            return self.get_rank_externally()
+
+    def get_rank_externally(self):
+        raise NotImplementedError
+
+    @property
+    def world_size(self):
+        if self.distributed_is_initialized:
+            return dist.get_world_size()
+        elif not self.in_distributed_environment:
+            return 1
+        else:
+            return self.get_world_size_externally()
+
+    def get_world_size_externally(self):
+        raise NotImplementedError
+
+    @property
+    def node_id(self):
+        if not self.in_distributed_environment:
+            return 0
+        else:
+            return self.get_node_id_externally()
+
+    def get_node_id_externally(self):
+        raise NotImplementedError
+
+    @property
+    def num_nodes(self):
+        if not self.in_distributed_environment:
+            return 1
+        else:
+            return self.get_num_nodes_externally()
+
+    def get_num_nodes_externally(self):
+        raise NotImplementedError
+
+    @property
+    def local_id(self):
+        return self.get_local_id_externally()
+
+    def get_local_id_externally(self):
+        raise NotImplementedError
+
+    @property
+    def local_world_size(self):
+        try:
+            return self.get_local_world_size_externally()
+        except NotImplementedError:
+            return
+
+    def get_local_world_size_externally(self):
+        raise NotImplementedError
+
+    @property
+    def device(self):
+        if torch.cuda.is_available():
+            return torch.device("cuda", self.local_id)
+        else:
+            return torch.device("cpu")
+
+    @property
+    def device_id(self):
+        return self.local_id
+
+    @property
+    def launch_node_ip_address(self):
+        return self.get_launch_node_ip_address_externally()
+
+    def get_launch_node_ip_address_externally(self):
+        raise NotImplementedError
+
+    @property
+    def job_id(self):
+        return self.get_job_id_externally()
+
+    def get_job_id_externally(self):
+        raise NotImplementedError
+
+    def print_info(self, printer: Callable[[str], None]):
+        if printer is None:
+            printer = print
+        attries = [
+            "rank",
+            "world_size",
+            "num_nodes",
+            "local_id",
+            "device",
+            "device_id",
+            "launch_node_ip_address",
+            "job_id",
+        ]
+        for attr in attries:
+            try:
+                attr_value = getattr(self, attr)
+            except NotImplementedError:
+                attr_value = "Not implemented"
+            message = f"{self.__class__.__name__}.{attr} = {attr_value}"
+            printer(message)
+        return self
+
+
+def detect_cluster_and_get_cluster_spec():
+    # TODO
+    pass
+
+
+class SlurmSpec(GeneralClusterSpec):
+    def check_externally_if_in_distributed_environment(self):
+        return int(os.getenv("SLURM_NTASKS", 1)) > 1
+
+    def get_world_size_externally(self):
+        return int(os.getenv("SLURM_NTASKS", 1))
+
+    def get_node_id_externally(self):
+        return int(os.getenv("SLURM_NODEID", 0))
+
+    def get_num_nodes_externally(self):
+        return int(os.getenv("SLURM_NNODES", 1))
+
+    def get_launch_node_ip_address_externally(self):
+        return os.getenv("SLURM_LAUNCH_NODE_IPADDR")
+
+    def get_local_id_externally(self):
+        return int(os.getenv("SLURM_LOCALID", 0))
+
+    def get_job_id_externally(self):
+        return os.getenv("SLURM_JOB_ID")
+
+
+class _LegacySlurmSpec(object):
     @property
     def is_available(self):
         return self.in_distributed_environment
@@ -112,13 +307,12 @@ class SlurmSpec(object):
             "world_size",
             "launch_node_ip_address",
             "in_distributed_environment",
-            "device_id"
+            "device_id",
         ]
         for attry in attries:
             message = f"SlurmSpec.{attry} = {getattr(self, attry, 'UNKNOWN')}"
             printer(message)
         return self
 
+
 SLURM = SlurmSpec()
-
-

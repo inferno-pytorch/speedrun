@@ -13,8 +13,8 @@ import numpy as np
 import torch.cuda
 import torch.distributed as td
 from speedrun.utils.yaml_utils import dump_yaml
-from utils import sync_values, gather
-from infra_spec import SLURM
+from speedrun.distributed.utils import sync_values, gather
+from speedrun.distributed.infra_spec import SLURM
 
 
 class SlurmDistributor(object):
@@ -270,5 +270,6 @@ class SlurmDistributor(object):
 class BigBirdDistributor:
     def squawk(self, message):
         print(f"BigBirdDistributor says: {message}")
+
 
 DistributorMixin = SlurmDistributor if SLURM.is_available else BigBirdDistributor
