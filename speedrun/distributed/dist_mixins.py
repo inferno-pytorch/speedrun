@@ -12,10 +12,26 @@ from pathlib import Path
 import numpy as np
 import torch.cuda
 import torch.distributed as td
+from torch._C._distributed_c10d import TCPStore
+
 from speedrun.utils.yaml_utils import dump_yaml
 from speedrun.distributed.utils import sync_values, gather
 from speedrun.distributed.infra_spec import SLURM
 
+
+def disable_print_for_non_master_processes(is_master):
+    """
+    This function disables printing when not in master process
+    """
+    import builtins as __builtin__
+    builtin_print = __builtin__.print
+
+    def print(*args, **kwargs):
+        force = kwargs.pop('force', False)
+        if is_master or force:
+            builtin_print(*args, **kwargs)
+
+    __builtin__.print = print
 
 class SlurmDistributor(object):
     @property
@@ -96,31 +112,21 @@ class SlurmDistributor(object):
         self.init_distributed()
         self.register_signal_handlers()
 
-    def init_distributed(self):
-        # Set the environment variables for distributed
-        if SLURM.num_nodes == 1:
-            # This should be 127.0.0.1, but idk and don't wanna bork anything right now
-            os.environ["MASTER_ADDR"] = SLURM.launch_node_ip_address
-        else:
-            os.environ["MASTER_ADDR"] = os.environ["HOSTNAME"]
-        os.environ["MASTER_PORT"] = str(self.get_arg("distributed_port", 32914))  # noqa
 
-        # Print stuff if we're verbosing
-        if self.get_arg("dist_verbose", False):
-            self.dist_console("General:")
-            # noinspection DuplicatedCode
-            self.dist_console(f"  MASTER_ADDR      = {os.environ['MASTER_ADDR']}")
-            self.dist_console(f"  MASTER_PORT      = {os.environ['MASTER_ADDR']}")
-            self.dist_console(f"  self.rank        = {self.rank}")
-            self.dist_console(f"  self.world_size  = {self.world_size}")
-            self.dist_console("SlurmSpec:")
-            SLURM.print_info(self.dist_console)
-
+    def _init_pg_with_tcp_based_kv(self):
+        # In case of the Mila cluster there is not adequate write protection for files when
+        # access by multiple nodes. This results deadlocks at process group initialization as soon
+        # as the process group is created due to infinite read-loops.
+        # This can be avoided by using a TCP-store instead, which does not have this problem.
+        store = TCPStore(host_name=os.environ['MASTER_ADDR'],
+                         port=int(os.environ['MASTER_PORT']),
+                         world_size=self.world_size, is_master=self.rank == 0)
         try:
             td.init_process_group(
                 backend="nccl",
                 world_size=self.world_size,
                 rank=self.rank,
+                store=store
             )
             self.dist_console("Successfully initialized distributed.")
             self.dist_console(f"Rank / World Size = {self.rank} / {self.world_size}")
@@ -135,8 +141,75 @@ class SlurmDistributor(object):
             self.dist_console(f"  SLURM.world_size = {SLURM.world_size}")
             self.dist_console("Traceback follows.")
             raise
+
+    def _init_pg_with_file_based_kv(self):
+        # this works on CC clusters
+        init_method = self.get_arg("dist_url", "env://")
+        try:
+            td.init_process_group(
+                backend="nccl",
+                world_size=self.world_size,
+                rank=self.rank,
+                init_method=init_method
+            )
+            self.dist_console("Successfully initialized distributed.")
+            self.dist_console(f"Rank / World Size = {self.rank} / {self.world_size}")
+        except RuntimeError:
+            # Print debug statements
+            self.dist_console("RuntimeError when attempting to init process group.")
+            self.dist_console(f"  MASTER_ADDR      = {os.environ['MASTER_ADDR']}")
+            self.dist_console(f"  MASTER_PORT      = {os.environ['MASTER_ADDR']}")
+            self.dist_console(f"  self.rank        = {self.rank}")
+            self.dist_console(f"  SLURM.rank       = {SLURM.rank}")
+            self.dist_console(f"  self.world_size  = {self.world_size}")
+            self.dist_console(f"  SLURM.world_size = {SLURM.world_size}")
+            self.dist_console("Traceback follows.")
+            raise
+
+
+    def init_distributed(self):
+        # Set the environment variables for distributed
+        if SLURM.num_nodes == 1:
+            # This should be 127.0.0.1, but idk and don't wanna bork anything right now
+            os.environ["MASTER_ADDR"] = SLURM.launch_node_ip_address
+        else:
+            if "HOSTNAME" in os.environ:
+                os.environ["MASTER_ADDR"] = os.environ["HOSTNAME"]
+            else:
+                # the first note in the slurm nodelist is the host adress, can be obtained
+                # with this command:
+                # $(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
+                os.system('export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)')
+        os.environ["MASTER_PORT"] = str(self.get_arg("distributed_port", 32914))  # noqa
+
+        # Print stuff if we're verbosing
+        if self.get_arg("dist_verbose", False):
+            self.dist_console("General:")
+            # noinspection DuplicatedCode
+            self.dist_console(f"  MASTER_ADDR      = {os.environ['MASTER_ADDR']}")
+            self.dist_console(f"  MASTER_PORT      = {os.environ['MASTER_ADDR']}")
+            self.dist_console(f"  self.rank        = {self.rank}")
+            self.dist_console(f"  self.world_size  = {self.world_size}")
+            self.dist_console("SlurmSpec:")
+            SLURM.print_info(self.dist_console)
+
+        if self.get_arg("backend", "nccl") == "nccl":
+            self._init_pg_with_file_based_kv()
+        # TCP port is necessary on the Mila cluster, otherwise you run into the risk
+        # of erratic deadlocks. This is NOT a problem on CC clusters afaik
+        elif self.get_arg("backend", "") == "tcp":
+            self._init_pg_with_tcp_based_kv()
+        else:
+            raise NotImplementedError(f"Unknown backend {self.get_arg('backend', '')}")
+        # waiting for all nodes to do their thing
+        torch.distributed.barrier()
         assert torch.cuda.is_available(), "Something is messed up."
         torch.cuda.set_device(self.device_id)
+
+        #FIXME: For debugging commented out, but when real training starts with a lot of
+        # GPUS you want to avoid redundant log bloat.
+        # disable_print_for_non_master_processes(self.rank == 0)
+
 
     @property
     def is_distributed(self):
