@@ -33,6 +33,7 @@ def disable_print_for_non_master_processes(is_master):
 
     __builtin__.print = print
 
+
 class SlurmDistributor(object):
     @property
     def in_distributed_environment(self):
@@ -165,7 +166,6 @@ class SlurmDistributor(object):
             self.dist_console(f"  SLURM.world_size = {SLURM.world_size}")
             self.dist_console("Traceback follows.")
             raise
-
 
     def init_distributed(self):
         # Set the environment variables for distributed
