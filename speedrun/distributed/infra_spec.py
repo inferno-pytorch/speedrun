@@ -205,6 +205,8 @@ class SlurmSpec(GeneralClusterSpec):
 
     def get_job_id_externally(self):
         return os.getenv("SLURM_JOB_ID")
+    def get_rank_externally(self):
+        return os.getenv("SLURM_PROCID")
 
 
 def detect_cluster_and_get_cluster_spec():
