@@ -60,6 +60,7 @@ class AbstractClusterSpec(ABC):
 
 
 class GeneralClusterSpec(AbstractClusterSpec):
+
     @property
     def distributed_is_initialized(self):
         return dist.is_available() and dist.is_initialized()
@@ -185,6 +186,10 @@ class GeneralClusterSpec(AbstractClusterSpec):
 
 
 class SlurmSpec(GeneralClusterSpec):
+    @property
+    def is_available(self):
+        return os.getenv("SLURM_JOB_ID") is not None
+
     def check_externally_if_in_distributed_environment(self):
         return int(os.getenv("SLURM_NTASKS", 1)) > 1
 
