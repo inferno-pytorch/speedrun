@@ -287,6 +287,7 @@ class SlurmDistributor(object):
             # We don't wrap if there are no parameters
             return model
         model.to(f"cuda:{self.device_id}" if str(self.device_id).isnumeric() else self.device_id)
+        print
         model = torch.nn.parallel.DistributedDataParallel(
             model,
             device_ids=[f"cuda:{self.device_id}" if str(self.device_id).isnumeric() else self.device_id],
