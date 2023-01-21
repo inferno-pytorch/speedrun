@@ -288,7 +288,7 @@ class SlurmDistributor(object):
             return model
         model = torch.nn.parallel.DistributedDataParallel(
             model,
-            device_ids=[self.device_id],
+            device_ids=[f"cuda:{self.device_id}" if str(self.device_id).isnumeric() else self.device_id],
             find_unused_parameters=find_unused_parameters,
         )
         if set_static_graph:
