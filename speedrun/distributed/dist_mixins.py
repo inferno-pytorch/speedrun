@@ -104,7 +104,8 @@ class SlurmDistributor(object):
         assert self.in_distributed_environment
         # WARNING: Don't read self.is_parent_proc, it doesn't work because
         # is_distributed is not set yet.
-        if SLURM.rank == 0:
+        print("This process has rank:", SLURM.rank)
+        if int(SLURM.rank) == 0:
             self.setup_parent_proc()
         else:
             self.setup_child_proc()
