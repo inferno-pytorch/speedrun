@@ -194,7 +194,7 @@ class SlurmSpec(GeneralClusterSpec):
         return int(os.getenv("SLURM_NTASKS", 1)) >= 1
 
     def get_world_size_externally(self):
-        return int(os.getenv("SLURM_NTASKS", 1))
+        return int(os.getenv("SLURM_NTASKS", 1)) * int(os.getenv("SLURM_NNODES", 1))
 
     def get_node_id_externally(self):
         return int(os.getenv("SLURM_NODEID", 0))
