@@ -191,7 +191,7 @@ class SlurmSpec(GeneralClusterSpec):
         return os.getenv("SLURM_JOB_ID") is not None
 
     def check_externally_if_in_distributed_environment(self):
-        return int(os.getenv("SLURM_NTASKS", 1)) >= 1
+        return int(os.getenv("SLURM_NTASKS", 1)) > 1
 
     def get_world_size_externally(self):
         return int(os.getenv("SLURM_NTASKS", 1))

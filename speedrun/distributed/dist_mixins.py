@@ -131,7 +131,7 @@ class SlurmDistributor(object):
                 store=store
             )
             self.dist_console("Successfully initialized distributed.")
-            self.dist_console(f"Rank / World Size = {self.rank} / {self.world_size}")
+            self.dist_console(f"Process Rank {self.rank} using GPU {self.device_id}) with World Size {self.world_size}")
         except RuntimeError:
             # Print debug statements
             self.dist_console("RuntimeError when attempting to init process group.")
@@ -155,7 +155,7 @@ class SlurmDistributor(object):
                 init_method=init_method
             )
             self.dist_console("Successfully initialized distributed.")
-            self.dist_console(f"Rank / World Size = {self.rank} / {self.world_size}")
+            self.dist_console(f"Process Rank {self.rank} using GPU {self.device_id}) with World Size {self.world_size}")
         except RuntimeError:
             # Print debug statements
             self.dist_console("RuntimeError when attempting to init process group.")
