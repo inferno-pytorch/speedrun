@@ -8,33 +8,33 @@ import torch.distributed as dist
 
 
 class AbstractClusterSpec(Protocol, ABC):
-    @abstractmethod
     @property
+    @abstractmethod
     def distributed_is_initialized(self):
         pass
     
-    @abstractmethod
     @property
+    @abstractmethod
     def in_distributed_environment(self):
         pass
 
-    @abstractmethod
     @property
+    @abstractmethod
     def rank(self):
         pass
 
-    @abstractmethod
     @property
+    @abstractmethod
     def world_size(self):
         pass
 
-    @abstractmethod
     @property
+    @abstractmethod
     def node_id(self):
         pass
 
-    @abstractmethod
     @property
+    @abstractmethod
     def num_nodes(self):
         pass
 
