@@ -12,7 +12,7 @@ class AbstractClusterSpec(ABC):
     @abstractmethod
     def distributed_is_initialized(self):
         pass
-    
+
     @property
     @abstractmethod
     def in_distributed_environment(self):
@@ -183,8 +183,10 @@ class GeneralClusterSpec(AbstractClusterSpec):
         return self
 
 
-
 class SlurmSpec(GeneralClusterSpec):
+    def is_available(self):
+        return os.getenv("SLURM_JOB_ID") is not None
+
     def check_externally_if_in_distributed_environment(self):
         return int(os.getenv("SLURM_NTASKS", 1)) > 1
 
@@ -205,6 +207,7 @@ class SlurmSpec(GeneralClusterSpec):
 
     def get_job_id_externally(self):
         return os.getenv("SLURM_JOB_ID")
+
     def get_rank_externally(self):
         return os.getenv("SLURM_PROCID")
 
@@ -212,6 +215,7 @@ class SlurmSpec(GeneralClusterSpec):
 def detect_cluster_and_get_cluster_spec():
     # TODO
     pass
+
 
 SLURM = SlurmSpec()
 
