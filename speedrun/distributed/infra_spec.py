@@ -1,5 +1,5 @@
 import os
-from typing import Callable, Protocol
+from typing import Callable
 from abc import ABC, abstractmethod
 from speedrun.distributed.utils import sync_values, gather
 
@@ -7,7 +7,7 @@ import torch.cuda
 import torch.distributed as dist
 
 
-class AbstractClusterSpec(Protocol, ABC):
+class AbstractClusterSpec(ABC):
     @property
     @abstractmethod
     def distributed_is_initialized(self):
