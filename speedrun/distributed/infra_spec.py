@@ -1,12 +1,12 @@
 import os
-from typing import Callable, Protocol
+from typing import Callable
 from speedrun.distributed.utils import sync_values, gather
 
 import torch.cuda
 import torch.distributed as dist
 
 
-class AbstractClusterSpec(Protocol):
+class AbstractClusterSpec(object):
     @property
     def distributed_is_initialized(self):
         raise NotImplementedError
