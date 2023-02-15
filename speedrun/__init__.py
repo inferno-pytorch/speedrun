@@ -13,3 +13,4 @@ from .logging.io_logging import IOMixin
 from .logging.firelight import FirelightMixin
 from .logging.wandb import WandBMixin, WandBSweepMixin, SweepRunner
 from .logging.queues import QueueMixin
+from .distributed.dist_mixins import DistributorMixin

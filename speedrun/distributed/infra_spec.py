@@ -1,51 +1,62 @@
 import os
-from typing import Callable
+from typing import Callable, Protocol
+from abc import ABC, abstractmethod
 from speedrun.distributed.utils import sync_values, gather
 
 import torch.cuda
 import torch.distributed as dist
 
 
-class AbstractClusterSpec(object):
+class AbstractClusterSpec(Protocol, ABC):
+    @abstractmethod
     @property
     def distributed_is_initialized(self):
-        raise NotImplementedError
+        pass
     
+    @abstractmethod
     @property
     def in_distributed_environment(self):
-        return
+        pass
 
+    @abstractmethod
     @property
     def rank(self):
-        raise NotImplementedError
+        pass
 
+    @abstractmethod
     @property
     def world_size(self):
-        raise NotImplementedError
+        pass
 
+    @abstractmethod
     @property
     def node_id(self):
-        raise NotImplementedError
+        pass
 
+    @abstractmethod
     @property
     def num_nodes(self):
-        raise NotImplementedError
+        pass
 
     @property
+    @abstractmethod
     def local_id(self):
-        raise NotImplementedError
+        pass
 
     @property
+    @abstractmethod
     def local_world_size(self):
-        raise NotImplementedError
+        pass
 
     @property
+    @abstractmethod
     def device(self):
-        raise NotImplementedError
+        pass
 
     @property
+    @abstractmethod
     def launch_node_ip_address(self):
-        raise NotImplementedError
+        pass
 
 
 class GeneralClusterSpec(AbstractClusterSpec):
@@ -172,10 +183,6 @@ class GeneralClusterSpec(AbstractClusterSpec):
         return self
 
 
-def detect_cluster_and_get_cluster_spec():
-    # TODO
-    pass
-
 
 class SlurmSpec(GeneralClusterSpec):
     def check_externally_if_in_distributed_environment(self):
@@ -198,6 +205,15 @@ class SlurmSpec(GeneralClusterSpec):
 
     def get_job_id_externally(self):
         return os.getenv("SLURM_JOB_ID")
+    def get_rank_externally(self):
+        return os.getenv("SLURM_PROCID")
+
+
+def detect_cluster_and_get_cluster_spec():
+    # TODO
+    pass
+
+SLURM = SlurmSpec()
 
 
 class _LegacySlurmSpec(object):
@@ -313,6 +329,3 @@ class _LegacySlurmSpec(object):
             message = f"SlurmSpec.{attry} = {getattr(self, attry, 'UNKNOWN')}"
             printer(message)
         return self
-
-
-SLURM = SlurmSpec()
