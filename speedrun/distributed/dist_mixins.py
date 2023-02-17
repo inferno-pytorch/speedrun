@@ -80,10 +80,276 @@ class SlurmDistributor(object):
             # Read it in now
             self.read_config_file(file_name=file_name)
 
-    def dist_console(self, message: str):
-        if self.get_arg("verbose", True):
-            print(message, file=sys.stderr)
-        return self
+    import time
+    import numpy as np
+    from typing import Callable, Protocol
+    from abc import abstractmethod
+    from datetime import timedelta
+    from pathlib import Path
+    from typing import List, Optional, Iterable, Union
+    from speedrun.distributed.utils import sync_values
+    import os
+    import torch
+    import sys
+    import torch.distributed as dist
+    from torch.distributed.elastic.multiprocessing.errors import record
+    from torch._C._distributed_c10d import TCPStore
+
+    class AbstractClusterSpec(Protocol):
+        @property
+        @abstractmethod
+        def distributed_is_initialized(self):
+            pass
+
+        @property
+        @abstractmethod
+        def in_distributed_environment(self):
+            pass
+
+        @property
+        @abstractmethod
+        def rank(self):
+            pass
+
+        @property
+        @abstractmethod
+        def world_size(self):
+            pass
+
+        @property
+        @abstractmethod
+        def node_id(self):
+            pass
+
+        @property
+        @abstractmethod
+        def num_nodes(self):
+            pass
+
+        @property
+        @abstractmethod
+        def local_id(self):
+            pass
+
+        @property
+        @abstractmethod
+        def local_world_size(self):
+            pass
+
+        @property
+        @abstractmethod
+        def device(self):
+            pass
+
+        @property
+        @abstractmethod
+        def launch_node_ip_address(self):
+            pass
+
+    class GeneralClusterSpec(AbstractClusterSpec):
+        @property
+        def distributed_is_initialized(self):
+            return dist.is_available() and dist.is_initialized()
+
+        @property
+        def in_distributed_environment(self):
+            # print(f"GeneralClusterSpec.in_distributed_environment: {self.check_externally_if_in_distributed_environment()}")
+            if self.distributed_is_initialized:
+                return True
+            else:
+                return self.check_externally_if_in_distributed_environment()
+
+        def check_externally_if_in_distributed_environment(self):
+            raise NotImplementedError
+
+        @property
+        def rank(self):
+            if self.distributed_is_initialized:
+                return int(dist.get_rank())
+            elif not self.in_distributed_environment:
+                return 0
+            else:
+                return int(self.get_rank_externally())
+
+        def get_rank_externally(self):
+            raise NotImplementedError
+
+        @property
+        def world_size(self):
+            if self.distributed_is_initialized:
+                return dist.get_world_size()
+            elif not self.in_distributed_environment:
+                return 1
+            else:
+                return self.get_world_size_externally()
+
+        def get_world_size_externally(self):
+            raise NotImplementedError
+
+        @property
+        def node_id(self):
+            if not self.in_distributed_environment:
+                return 0
+            else:
+                return self.get_node_id_externally()
+
+        def get_node_id_externally(self):
+            raise NotImplementedError
+
+        @property
+        def num_nodes(self):
+            if not self.in_distributed_environment:
+                return 1
+            else:
+                return self.get_num_nodes_externally()
+
+        def get_num_nodes_externally(self):
+            raise NotImplementedError
+
+        @property
+        def local_id(self):
+            return self.get_local_id_externally()
+
+        def get_local_id_externally(self):
+            raise NotImplementedError
+
+        @property
+        def local_world_size(self):
+            try:
+                return self.get_local_world_size_externally()
+            except NotImplementedError:
+                return
+
+        def get_local_world_size_externally(self):
+            raise NotImplementedError
+
+        @property
+        def device(self):
+            if torch.cuda.is_available():
+                return torch.device("cuda", self.local_id)
+            else:
+                return torch.device("cpu")
+
+        @property
+        def device_id(self):
+            return self.local_id
+
+        @property
+        def launch_node_ip_address(self):
+            return self.get_launch_node_ip_address_externally()
+
+        def get_launch_node_ip_address_externally(self):
+            raise NotImplementedError
+
+        @property
+        def job_id(self):
+            return self.get_job_id_externally()
+
+        def get_job_id_externally(self):
+            raise NotImplementedError
+
+        def print_info(self, printer: Callable[[str], None]):
+            if printer is None:
+                printer = print
+            attries = [
+                "rank",
+                "world_size",
+                "num_nodes",
+                "local_id",
+                "device",
+                "device_id",
+                "launch_node_ip_address",
+                "job_id",
+            ]
+            for attr in attries:
+                try:
+                    attr_value = getattr(self, attr)
+                except NotImplementedError:
+                    attr_value = "Not implemented"
+                message = f"{self.__class__.__name__}.{attr} = {attr_value}"
+                printer(message)
+            return self
+
+    class LocalSpec(GeneralClusterSpec):
+        def check_externally_if_in_distributed_environment(self):
+            return int(os.getenv("WORLD_SIZE", 1)) > 1
+
+        def get_world_size_externally(self):
+            return int(os.getenv("WORLD_SIZE", 1))
+
+        def get_node_id_externally(self):
+            return int(os.getenv("GROUP_RANK", 0))
+
+        def get_num_nodes_externally(self):
+            return int(os.getenv("NUM_NODES", 1))
+
+        def get_launch_node_ip_address_externally(self):
+            return os.getenv("MASTER_ADDR")
+
+        def get_local_id_externally(self):
+            return int(os.getenv("LOCAL_RANK", 0))
+
+        def get_job_id_externally(self):
+            return os.getenv("TORCHELASTIC_RUN_ID")
+
+        def get_rank_externally(self):
+            return os.getenv("RANK")
+
+    class LocalClusterDistributor(object):
+        LOCAL_SPEC = LocalSpec()
+
+        @property
+        def in_distributed_environment(self):
+            return self.LOCAL_SPEC.in_distributed_environment
+
+        @property
+        def job_uuid(self):
+            uuid = self.get_arg("uuid", os.getenv("SPEEDRUN_UUID"))
+            assert uuid is not None
+            return uuid
+
+        @property
+        def read_config_signal_path(self):
+            return os.path.join(self.log_directory, f"read_config_{self.job_uuid}.signal")
+
+        def mark_config_as_ready(self):
+            # WARNING: exist_ok should ideally be False, because it's very much not
+            # okay if the signal file already exists. But setting it to False leads
+            # to mysterious errors when jobs are resumed after preemption (even though
+            # they shouldn't), and we don't quite know why this file exist. Until we
+            # figure that out, we'll play cowboy and set it to True.
+            Path(self.read_config_signal_path).touch(exist_ok=True)
+            return self
+
+        def mark_config_as_unready(self):
+            Path(self.read_config_signal_path).unlink(missing_ok=True)
+            return self
+
+        @property
+        def config_is_ready(self):
+            return Path(self.read_config_signal_path).exists()
+
+        def wait_for_config_file(
+                self, file_name: str = "train_config.yml", read: bool = True
+        ):
+            # Sleep for a while before querying the config file, just for good measure.
+            time.sleep(5)
+            while not self.config_is_ready:
+                time.sleep(5)
+            # Use the extra 5 seconds for the config to have been fully written out,
+            # just in case
+            time.sleep(5)
+            if read:
+                # Read it in now
+                self.read_config_file(file_name=file_name)
+
+        def dist_console(self, message: str):
+            try:
+                if self.get_arg("verbose", True):
+                    print(message, file=sys.stderr, flush=True)
+            except:
+                print(message, file=sys.stderr, flush=True)
+            return self
 
     def setup_parent_proc(self):
         self.record_args()
