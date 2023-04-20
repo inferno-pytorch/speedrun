@@ -1,4 +1,6 @@
 from contextlib import contextmanager
+
+import tensorboardX
 import torch
 from torch.utils.data import DataLoader
 import os
@@ -235,6 +237,13 @@ class InfernoMixin(ParsingMixin):
                 tb_args['log_directory'] = f"{self.experiment_directory}/Logs"
             print("logging to ", tb_args['log_directory'])
             tb_logger = TensorboardLogger(**tb_args)
+
+            # if there already is a logger, e.g. from TensorboardMixin, use the same here
+            if hasattr(self, '_logger'):
+                assert isinstance(self._logger, tensorboardX.SummaryWriter), \
+                    f'can only additionally register inferno logger if present logger is tensorboardx SummaryWriter' \
+                    f'Got {self._logger}.'
+                tb_logger._writer = self._logger
 
             # register Tensorboard logger
             self._trainer.build_logger(tb_logger)
