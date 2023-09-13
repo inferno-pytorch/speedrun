@@ -172,7 +172,7 @@ class BaseExperiment(object):
         """
         dump_path = os.path.join(self.configuration_directory, file_name)
         with open(dump_path, 'w') as f:
-            yaml.dump(self._config, f)
+            yaml.dump(self._config, f, sort_keys=False)
         return self
 
     def record_args(self):
@@ -559,6 +559,8 @@ class BaseExperiment(object):
             Name of the file. Defaults to `train_config.yml`.
         path : str
             Path to file. Defaults to 'experiment_directory/Configurations/file_name'.
+        loader: yaml.Loader
+            yaml loader to use to load the file.
 
         Returns
         -------

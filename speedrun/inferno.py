@@ -268,6 +268,8 @@ class InfernoMixin(ParsingMixin):
                         paragraphs = []
                         for i, line in enumerate(f.readlines()):
                             # add tab to each line to make sure the paragraph is formatted as code
+
+                            # these are the lines with top level keys. log them individually
                             if not line.startswith((' ', '#', '\t')) and len(line.split(':')) > 1:
                                 paragraphs.append('\t' + ':'.join(line.split(':')[1:]))
                                 tags.append(line.split(':')[0])

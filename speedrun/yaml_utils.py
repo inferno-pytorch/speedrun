@@ -56,7 +56,7 @@ yaml.add_constructor('!TorchTensor', torch_tensor)
 yaml.add_constructor('!Hyperopt', hyperopt)
 
 
-object_tags = ['!Obj:', '!Tune:']
+object_tags = ['!Obj:', '!Tune:', '!Case:', '!Ref']
 
 
 class OverrideDict(dict):
@@ -217,14 +217,61 @@ class TuneLoader(Loader):
 TuneLoader.add_multi_constructor('!Tune:', TuneLoader.construct_instance)
 
 
-class ObjectLoader(TuneLoader):
+class CaseLoader(TuneLoader):
     """
     Loader for python object construction
-    Examples:
-
     """
-    pass
+
+    # we override this method to remember the root node,
+    # so that we can later resolve paths relative to it
+    def get_single_node(self):
+        self.cur_root = super().get_single_node()
+        return self.cur_root
+
+    def construct_by_path(self, path):
+        cur = self.cur_root
+        for item in path.split("."):
+            # cur.value, if it's a mappping, contains a list
+            # of (key, value) tuples
+            for (key, value) in cur.value:
+                # key, if it's a scalar, contains its textual
+                # content in key.value
+                if key.value == item:
+                    cur = value
+                    break
+        # defer construction to the default constructor of
+        # the referred node
+        result = self.construct_object(cur)
+        return result
+
+    def construct_case(self, suffix, node):
+        case = self.construct_by_path(suffix)
+        case = str(case).lower()
+        if isinstance(node, yaml.MappingNode):  # index the mapping with the case
+            for (key, value) in node.value:
+                # key, if it's a scalar, contains its textual
+                # content in key.value
+                if str(key.value).lower() == case:
+                    return self.construct_object(value)
+            from yaml import YAMLError
+            raise YAMLError(f'Cannot construct case tag for case "{case}" (read from "{suffix}"). '
+                            f'Available cases are {[key.value for key, value in node.value]}.')
+        else:
+            raise NotImplementedError('!Case is only implemented for mapping nodes')
+
+    def construct_ref(self, node):
+        return self.construct_by_path(node.value)
+
 
 
 # add the python object constructor to the loader
-ObjectLoader.add_multi_constructor('!Obj:', ObjectLoader.construct_instance)
+CaseLoader.add_multi_constructor('!Case:', CaseLoader.construct_case)
+CaseLoader.add_constructor('!Ref', CaseLoader.construct_ref)
+CaseLoader.add_multi_constructor('!Obj', partial(temp_obj_constructor, tag_prefix='!Obj:'))
+
+
+# Loader to load !Case and !Ref statements, but not !Obj statements
+class ObjectLoader(CaseLoader):
+    pass
+
+ObjectLoader.add_multi_constructor('!Obj:', CaseLoader.construct_instance)
